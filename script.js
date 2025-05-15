@@ -41,6 +41,58 @@ const settingsButton = document.getElementById('settingsButton');
 const multiplayerButton = document.getElementById('multiplayerButton');
 const quitButton = document.getElementById('quitButton');
 
+// Movement variables
+const ballSpeed = 0.2;
+const jumpStrength = 0.5;
+const gravity = -0.02;
+const keys = {};
+let isJumping = false;
+let verticalVelocity = 0;
+
+// Add event listeners for key presses
+document.addEventListener('keydown', (event) => {
+  keys[event.key] = true;
+});
+
+document.addEventListener('keyup', (event) => {
+  keys[event.key] = false;
+});
+
+// Function to handle ball movement
+function moveBall() {
+  if (keys['ArrowUp'] || keys['w']) {
+    ball.position.z -= ballSpeed; // Move forward
+  }
+  if (keys['ArrowDown'] || keys['s']) {
+    ball.position.z += ballSpeed; // Move backward
+  }
+  if (keys['ArrowLeft'] || keys['a']) {
+    ball.position.x -= ballSpeed; // Move left
+  }
+  if (keys['ArrowRight'] || keys['d']) {
+    ball.position.x += ballSpeed; // Move right
+  }
+}
+
+// Function to handle jumping
+function handleJump() {
+  if (keys[' '] && !isJumping) { // Spacebar key to jump
+    isJumping = true;
+    verticalVelocity = jumpStrength;
+  }
+  
+  if (isJumping) {
+    ball.position.y += verticalVelocity; // Apply vertical velocity
+    verticalVelocity += gravity; // Apply gravity
+    
+    if (ball.position.y <= 1) { // Stop jumping when ball hits the ground
+      ball.position.y = 1;
+      isJumping = false;
+      verticalVelocity = 0;
+    }
+  }
+}
+
 playButton.addEventListener('click', () => {
   menu.style.display = 'none'; // Hide menu
   animate(); // Start the game loop
@@ -61,5 +113,11 @@ quitButton.addEventListener('click', () => {
 // Game loop
 function animate() {
   requestAnimationFrame(animate);
+  
+  // Update ball movement and jumping
+  moveBall();
+  handleJump();
+
+  // Render the scene
   renderer.render(scene, camera);
 }
