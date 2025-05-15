@@ -22,13 +22,37 @@ ground.rotation.x = -Math.PI / 2; // Horizontal
 ground.receiveShadow = true; // Ground receives shadows
 scene.add(ground);
 
-// Ball
-const ballGeometry = new THREE.SphereGeometry(1, 32, 32);
-const ballMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const ball = new THREE.Mesh(ballGeometry, ballMaterial);
-ball.position.set(0, 1, 0);
-ball.castShadow = true; // Ball casts shadows
-scene.add(ball);
+// Car (Body)
+const carBodyGeometry = new THREE.BoxGeometry(2, 1, 4);
+const carBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+const carBody = new THREE.Mesh(carBodyGeometry, carBodyMaterial);
+carBody.position.set(0, 1.5, 0);
+carBody.castShadow = true; // Car casts shadows
+scene.add(carBody);
+
+// Car (Wheels)
+const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.5, 32);
+const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+function createWheel(x, y, z) {
+  const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+  wheel.rotation.z = Math.PI / 2; // Rotate to match wheel orientation
+  wheel.position.set(x, y, z);
+  wheel.castShadow = true; // Wheels cast shadows
+  return wheel;
+}
+
+const frontLeftWheel = createWheel(-0.8, 1, 1.5);
+const frontRightWheel = createWheel(0.8, 1, 1.5);
+const backLeftWheel = createWheel(-0.8, 1, -1.5);
+const backRightWheel = createWheel(0.8, 1, -1.5);
+
+scene.add(frontLeftWheel, frontRightWheel, backLeftWheel, backRightWheel);
+
+// Group car parts together
+const car = new THREE.Group();
+car.add(carBody, frontLeftWheel, frontRightWheel, backLeftWheel, backRightWheel);
+scene.add(car);
 
 // Camera positioning
 camera.position.set(0, 10, 20);
@@ -42,7 +66,7 @@ const multiplayerButton = document.getElementById('multiplayerButton');
 const quitButton = document.getElementById('quitButton');
 
 // Movement variables
-const ballSpeed = 0.2;
+const carSpeed = 0.2;
 const jumpStrength = 0.5;
 const gravity = -0.02;
 const keys = {};
@@ -58,19 +82,19 @@ document.addEventListener('keyup', (event) => {
   keys[event.key] = false;
 });
 
-// Function to handle ball movement
-function moveBall() {
+// Function to handle car movement
+function moveCar() {
   if (keys['ArrowUp'] || keys['w']) {
-    ball.position.z -= ballSpeed; // Move forward
+    car.position.z -= carSpeed; // Move forward
   }
   if (keys['ArrowDown'] || keys['s']) {
-    ball.position.z += ballSpeed; // Move backward
+    car.position.z += carSpeed; // Move backward
   }
   if (keys['ArrowLeft'] || keys['a']) {
-    ball.position.x -= ballSpeed; // Move left
+    car.position.x -= carSpeed; // Move left
   }
   if (keys['ArrowRight'] || keys['d']) {
-    ball.position.x += ballSpeed; // Move right
+    car.position.x += carSpeed; // Move right
   }
 }
 
@@ -82,11 +106,11 @@ function handleJump() {
   }
   
   if (isJumping) {
-    ball.position.y += verticalVelocity; // Apply vertical velocity
+    car.position.y += verticalVelocity; // Apply vertical velocity
     verticalVelocity += gravity; // Apply gravity
     
-    if (ball.position.y <= 1) { // Stop jumping when ball hits the ground
-      ball.position.y = 1;
+    if (car.position.y <= 1.5) { // Stop jumping when car hits the ground
+      car.position.y = 1.5;
       isJumping = false;
       verticalVelocity = 0;
     }
@@ -114,8 +138,8 @@ quitButton.addEventListener('click', () => {
 function animate() {
   requestAnimationFrame(animate);
   
-  // Update ball movement and jumping
-  moveBall();
+  // Update car movement and jumping
+  moveCar();
   handleJump();
 
   // Render the scene
