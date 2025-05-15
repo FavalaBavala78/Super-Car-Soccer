@@ -6,18 +6,33 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Create ground
-const groundGeometry = new THREE.PlaneGeometry(100, 100);
+const groundGeometry = new THREE.PlaneGeometry(100, 50);
 const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.rotation.x = -Math.PI / 2; // Rotate to make it horizontal
 scene.add(ground);
 
-// Create player (a cube)
-const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
-const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-const player = new THREE.Mesh(playerGeometry, playerMaterial);
-player.position.y = 1; // Start above the ground
-scene.add(player);
+// Create ball
+const ballGeometry = new THREE.SphereGeometry(1, 32, 32);
+const ballMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+ball.position.set(0, 1, 0); // Start in the center
+scene.add(ball);
+
+// Create goals
+const goalWidth = 10;
+const goalHeight = 5;
+const goalDepth = 2;
+
+const goalMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+const goal1 = new THREE.Mesh(new THREE.BoxGeometry(goalWidth, goalHeight, goalDepth), goalMaterial);
+goal1.position.set(0, goalHeight / 2, -25); // Place at the far end
+scene.add(goal1);
+
+const goal2 = goal1.clone();
+goal2.material = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+goal2.position.set(0, goalHeight / 2, 25); // Place at the near end
+scene.add(goal2);
 
 // Add lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -28,33 +43,27 @@ directionalLight.position.set(5, 10, 7.5);
 scene.add(directionalLight);
 
 // Camera position
-camera.position.set(0, 5, 10);
-camera.lookAt(player.position);
+camera.position.set(0, 15, 30);
+camera.lookAt(0, 0, 0);
 
-// Physics variables
-let velocityY = 0;
-const gravity = -0.05;
-const jumpForce = 1.2;
-let grounded = false;
+// Ball physics variables
+let ballVelocityX = 0;
+let ballVelocityZ = 0;
+const friction = 0.98;
 
-// Movement variables
-const moveSpeed = 0.2;
-const rotationSpeed = 0.05;
+// Controls for moving the ball (WASD)
 const keys = {
   w: false,
   a: false,
   s: false,
   d: false,
-  space: false,
 };
 
-// Event listeners for controls
 document.addEventListener('keydown', (event) => {
   if (event.key === 'w') keys.w = true;
   if (event.key === 'a') keys.a = true;
   if (event.key === 's') keys.s = true;
   if (event.key === 'd') keys.d = true;
-  if (event.key === ' ') keys.space = true;
 });
 
 document.addEventListener('keyup', (event) => {
@@ -62,53 +71,56 @@ document.addEventListener('keyup', (event) => {
   if (event.key === 'a') keys.a = false;
   if (event.key === 's') keys.s = false;
   if (event.key === 'd') keys.d = false;
-  if (event.key === ' ') keys.space = false;
 });
 
 // Game loop
 function animate() {
   requestAnimationFrame(animate);
 
-  // Apply gravity
-  if (!grounded) velocityY += gravity;
-  player.position.y += velocityY;
+  // Ball movement
+  if (keys.w) ballVelocityZ -= 0.1;
+  if (keys.s) ballVelocityZ += 0.1;
+  if (keys.a) ballVelocityX -= 0.1;
+  if (keys.d) ballVelocityX += 0.1;
 
-  // Check for ground collision
-  if (player.position.y <= 1) {
-    player.position.y = 1;
-    velocityY = 0;
-    grounded = true;
-  } else {
-    grounded = false;
-  }
+  ball.position.x += ballVelocityX;
+  ball.position.z += ballVelocityZ;
 
-  // Movement
-  if (keys.w) {
-    player.position.z -= moveSpeed * Math.cos(player.rotation.y);
-    player.position.x -= moveSpeed * Math.sin(player.rotation.y);
-  }
-  if (keys.s) {
-    player.position.z += moveSpeed * Math.cos(player.rotation.y);
-    player.position.x += moveSpeed * Math.sin(player.rotation.y);
-  }
-  if (keys.a) {
-    player.rotation.y += rotationSpeed;
-  }
-  if (keys.d) {
-    player.rotation.y -= rotationSpeed;
+  // Apply friction
+  ballVelocityX *= friction;
+  ballVelocityZ *= friction;
+
+  // Prevent the ball from leaving the ground
+  if (ball.position.x < -50 || ball.position.x > 50) ballVelocityX = -ballVelocityX;
+  if (ball.position.z < -25 || ball.position.z > 25) ballVelocityZ = -ballVelocityZ;
+
+  // Check for scoring
+  if (
+    ball.position.z < -24.5 &&
+    ball.position.x > -goalWidth / 2 &&
+    ball.position.x < goalWidth / 2
+  ) {
+    console.log('Scored in Goal 1!');
+    resetBall();
   }
 
-  // Jump
-  if (keys.space && grounded) {
-    velocityY = jumpForce;
-    grounded = false;
+  if (
+    ball.position.z > 24.5 &&
+    ball.position.x > -goalWidth / 2 &&
+    ball.position.x < goalWidth / 2
+  ) {
+    console.log('Scored in Goal 2!');
+    resetBall();
   }
-
-  // Update camera to follow the player
-  camera.position.set(player.position.x, player.position.y + 5, player.position.z + 10);
-  camera.lookAt(player.position);
 
   renderer.render(scene, camera);
+}
+
+// Reset ball position after scoring
+function resetBall() {
+  ball.position.set(0, 1, 0);
+  ballVelocityX = 0;
+  ballVelocityZ = 0;
 }
 
 animate();
