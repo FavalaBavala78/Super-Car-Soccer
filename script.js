@@ -73,7 +73,7 @@ const gravity = -0.02;
 const keys = {};
 let isJumping = false;
 let canDoubleJump = true; // Allows a second jump or flip
-let flippedMidAir = false; // Tracks whether a flip has been performed
+let hasFlipped = false; // Tracks whether a flip has been performed
 let verticalVelocity = 0;
 
 // Add event listeners for key presses
@@ -115,20 +115,25 @@ function handleJumpOrFlip() {
   if (keys[' '] && !isJumping) { // Initial jump
     isJumping = true;
     verticalVelocity = jumpStrength;
-  } else if (keys[' '] && isJumping && canDoubleJump && !flippedMidAir) {
-    // Handle mid-air flip or double jump
+  } else if (keys[' '] && isJumping && canDoubleJump && !hasFlipped) {
+    // Handle mid-air flip only if a movement key is pressed
     if (keys['ArrowUp'] || keys['w']) {
       // Perform a forward flip
       car.rotation.x -= Math.PI / 2; // Rotate forward
+      hasFlipped = true;
     } else if (keys['ArrowDown'] || keys['s']) {
       // Perform a backward flip
       car.rotation.x += Math.PI / 2; // Rotate backward
-    } else {
-      // Perform a simple double jump
-      verticalVelocity = jumpStrength;
+      hasFlipped = true;
     }
-    flippedMidAir = true; // Mark that a flip or double jump has been performed
-    canDoubleJump = false; // Disable further jumps or flips
+
+    if (hasFlipped) {
+      canDoubleJump = false; // Disable further jumps or flips
+    } else {
+      // Perform a double jump without flipping
+      verticalVelocity = jumpStrength;
+      canDoubleJump = false;
+    }
   }
 
   if (isJumping) {
@@ -139,7 +144,7 @@ function handleJumpOrFlip() {
       car.position.y = 1.5;
       isJumping = false;
       canDoubleJump = true; // Reset double jump ability
-      flippedMidAir = false; // Reset flip state
+      hasFlipped = false; // Reset flip state
       verticalVelocity = 0;
       car.rotation.x = 0; // Reset any flips
     }
