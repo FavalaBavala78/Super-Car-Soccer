@@ -72,6 +72,7 @@ const jumpStrength = 0.5;
 const gravity = -0.02;
 const keys = {};
 let isJumping = false;
+let canDoubleJump = true; // Allows a second jump or flip
 let verticalVelocity = 0;
 
 // Add event listeners for key presses
@@ -85,8 +86,8 @@ document.addEventListener('keyup', (event) => {
 
 // Function to handle car movement and turning
 function moveCar() {
-  // Allow movement and turning only if the car is not jumping
-  if (!isJumping) {
+  // Allow movement and turning only if the car is not flipping mid-air
+  if (!isJumping || canDoubleJump) {
     if (keys['ArrowUp'] || keys['w']) {
       // Move forward in the direction the car is facing
       car.position.x -= Math.sin(car.rotation.y) * carSpeed;
@@ -108,13 +109,26 @@ function moveCar() {
   }
 }
 
-// Function to handle jumping
-function handleJump() {
-  if (keys[' '] && !isJumping) { // Spacebar key to jump
+// Function to handle jumping and flipping
+function handleJumpOrFlip() {
+  if (keys[' '] && !isJumping) { // Initial jump
     isJumping = true;
     verticalVelocity = jumpStrength;
+  } else if (keys[' '] && isJumping && canDoubleJump) {
+    // Handle double jump or flip
+    if (keys['ArrowUp'] || keys['w']) {
+      // Perform a forward flip
+      car.rotation.x -= Math.PI / 2; // Rotate forward
+    } else if (keys['ArrowDown'] || keys['s']) {
+      // Perform a backward flip
+      car.rotation.x += Math.PI / 2; // Rotate backward
+    } else {
+      // Perform a simple double jump
+      verticalVelocity = jumpStrength;
+    }
+    canDoubleJump = false; // Disable further jumps or flips
   }
-  
+
   if (isJumping) {
     car.position.y += verticalVelocity; // Apply vertical velocity
     verticalVelocity += gravity; // Apply gravity
@@ -122,7 +136,9 @@ function handleJump() {
     if (car.position.y <= 1.5) { // Stop jumping when car hits the ground
       car.position.y = 1.5;
       isJumping = false;
+      canDoubleJump = true; // Reset double jump ability
       verticalVelocity = 0;
+      car.rotation.x = 0; // Reset any flips
     }
   }
 }
@@ -156,9 +172,9 @@ quitButton.addEventListener('click', () => {
 function animate() {
   requestAnimationFrame(animate);
   
-  // Update car movement and jumping
+  // Update car movement and jumping/flipping
   moveCar();
-  handleJump();
+  handleJumpOrFlip();
 
   // Update the camera
   updateCamera();
