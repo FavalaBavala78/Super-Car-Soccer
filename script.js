@@ -55,8 +55,8 @@ car.add(carBody, frontLeftWheel, frontRightWheel, backLeftWheel, backRightWheel)
 scene.add(car);
 
 // Camera positioning
-camera.position.set(0, 10, 20);
-camera.lookAt(0, 0, 0);
+camera.position.set(0, 5, 10); // Initial camera position
+camera.lookAt(car.position); // Look at the car's position
 
 // UI Menu
 const menu = document.getElementById('menu');
@@ -124,6 +124,14 @@ function handleJump() {
   }
 }
 
+// Function to update the camera to follow the car
+function updateCamera() {
+  const offset = new THREE.Vector3(0, 5, 10); // Offset behind and above the car
+  const rotatedOffset = offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), car.rotation.y); // Rotate the offset based on the car's rotation
+  camera.position.copy(car.position.clone().add(rotatedOffset)); // Position the camera
+  camera.lookAt(car.position); // Make the camera look at the car
+}
+
 playButton.addEventListener('click', () => {
   menu.style.display = 'none'; // Hide menu
   animate(); // Start the game loop
@@ -148,6 +156,9 @@ function animate() {
   // Update car movement and jumping
   moveCar();
   handleJump();
+
+  // Update the camera
+  updateCamera();
 
   // Render the scene
   renderer.render(scene, camera);
