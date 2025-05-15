@@ -66,15 +66,17 @@ const multiplayerButton = document.getElementById('multiplayerButton');
 const quitButton = document.getElementById('quitButton');
 
 // Movement variables
-const carSpeed = 0.2; // Forward and backward speed
+let carSpeed = 0.2; // Forward and backward speed
 const turnSpeed = 0.05; // Turning speed (rotation)
 const jumpStrength = 0.5;
+const flipSpeedBoost = 0.1; // Additional speed gained during a flip
 const gravity = -0.02;
 const keys = {};
 let isJumping = false;
 let canDoubleJump = true; // Allows a second jump or flip
 let hasFlipped = false; // Tracks whether a flip has been performed
 let verticalVelocity = 0;
+let horizontalVelocity = { x: 0, z: 0 }; // Tracks car's momentum
 
 // Add event listeners for key presses
 document.addEventListener('keydown', (event) => {
@@ -93,11 +95,15 @@ function moveCar() {
       // Move forward in the direction the car is facing
       car.position.x -= Math.sin(car.rotation.y) * carSpeed;
       car.position.z -= Math.cos(car.rotation.y) * carSpeed;
+      horizontalVelocity.x = -Math.sin(car.rotation.y) * carSpeed; // Save momentum
+      horizontalVelocity.z = -Math.cos(car.rotation.y) * carSpeed;
     }
     if (keys['ArrowDown'] || keys['s']) {
       // Move backward in the direction the car is facing
       car.position.x += Math.sin(car.rotation.y) * carSpeed;
       car.position.z += Math.cos(car.rotation.y) * carSpeed;
+      horizontalVelocity.x = Math.sin(car.rotation.y) * carSpeed; // Save momentum
+      horizontalVelocity.z = Math.cos(car.rotation.y) * carSpeed;
     }
     if (keys['ArrowLeft'] || keys['a']) {
       // Turn left
@@ -120,32 +126,34 @@ function handleJumpOrFlip() {
     if (keys['ArrowUp'] || keys['w']) {
       // Perform a forward flip
       car.rotation.x -= Math.PI / 2; // Rotate forward
+      carSpeed += flipSpeedBoost; // Increase speed
       hasFlipped = true;
     } else if (keys['ArrowDown'] || keys['s']) {
       // Perform a backward flip
       car.rotation.x += Math.PI / 2; // Rotate backward
+      carSpeed += flipSpeedBoost; // Increase speed
       hasFlipped = true;
     }
 
-    if (hasFlipped) {
-      canDoubleJump = false; // Disable further jumps or flips
-    } else {
-      // Perform a double jump without flipping
-      verticalVelocity = jumpStrength;
-      canDoubleJump = false;
-    }
+    // Prevent further flips or double jumps
+    canDoubleJump = false;
   }
 
   if (isJumping) {
     car.position.y += verticalVelocity; // Apply vertical velocity
     verticalVelocity += gravity; // Apply gravity
-    
+
+    // Apply horizontal momentum during jump
+    car.position.x += horizontalVelocity.x;
+    car.position.z += horizontalVelocity.z;
+
     if (car.position.y <= 1.5) { // Stop jumping when car hits the ground
       car.position.y = 1.5;
       isJumping = false;
       canDoubleJump = true; // Reset double jump ability
       hasFlipped = false; // Reset flip state
       verticalVelocity = 0;
+      carSpeed = 0.2; // Reset speed after landing
       car.rotation.x = 0; // Reset any flips
     }
   }
