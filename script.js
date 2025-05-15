@@ -85,23 +85,26 @@ document.addEventListener('keyup', (event) => {
 
 // Function to handle car movement and turning
 function moveCar() {
-  if (keys['ArrowUp'] || keys['w']) {
-    // Move forward in the direction the car is facing
-    car.position.x -= Math.sin(car.rotation.y) * carSpeed;
-    car.position.z -= Math.cos(car.rotation.y) * carSpeed;
-  }
-  if (keys['ArrowDown'] || keys['s']) {
-    // Move backward in the direction the car is facing
-    car.position.x += Math.sin(car.rotation.y) * carSpeed;
-    car.position.z += Math.cos(car.rotation.y) * carSpeed;
-  }
-  if (keys['ArrowLeft'] || keys['a']) {
-    // Turn left
-    car.rotation.y += turnSpeed;
-  }
-  if (keys['ArrowRight'] || keys['d']) {
-    // Turn right
-    car.rotation.y -= turnSpeed;
+  // Allow movement and turning only if the car is not jumping
+  if (!isJumping) {
+    if (keys['ArrowUp'] || keys['w']) {
+      // Move forward in the direction the car is facing
+      car.position.x -= Math.sin(car.rotation.y) * carSpeed;
+      car.position.z -= Math.cos(car.rotation.y) * carSpeed;
+    }
+    if (keys['ArrowDown'] || keys['s']) {
+      // Move backward in the direction the car is facing
+      car.position.x += Math.sin(car.rotation.y) * carSpeed;
+      car.position.z += Math.cos(car.rotation.y) * carSpeed;
+    }
+    if (keys['ArrowLeft'] || keys['a']) {
+      // Turn left
+      car.rotation.y += turnSpeed;
+    }
+    if (keys['ArrowRight'] || keys['d']) {
+      // Turn right
+      car.rotation.y -= turnSpeed;
+    }
   }
 }
 
