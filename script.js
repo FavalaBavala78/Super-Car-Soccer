@@ -67,6 +67,7 @@ const quitButton = document.getElementById('quitButton');
 
 // Movement variables
 const carSpeed = 0.2;
+const turnSpeed = 0.05; // Rotation speed
 const jumpStrength = 0.5;
 const gravity = -0.02;
 const keys = {};
@@ -82,19 +83,25 @@ document.addEventListener('keyup', (event) => {
   keys[event.key] = false;
 });
 
-// Function to handle car movement
+// Function to handle car movement and turning
 function moveCar() {
   if (keys['ArrowUp'] || keys['w']) {
-    car.position.z -= carSpeed; // Move forward
+    // Move forward in the direction the car is facing
+    car.position.x -= Math.sin(car.rotation.y) * carSpeed;
+    car.position.z -= Math.cos(car.rotation.y) * carSpeed;
   }
   if (keys['ArrowDown'] || keys['s']) {
-    car.position.z += carSpeed; // Move backward
+    // Move backward in the direction the car is facing
+    car.position.x += Math.sin(car.rotation.y) * carSpeed;
+    car.position.z += Math.cos(car.rotation.y) * carSpeed;
   }
   if (keys['ArrowLeft'] || keys['a']) {
-    car.position.x -= carSpeed; // Move left
+    // Turn left
+    car.rotation.y += turnSpeed;
   }
   if (keys['ArrowRight'] || keys['d']) {
-    car.position.x += carSpeed; // Move right
+    // Turn right
+    car.rotation.y -= turnSpeed;
   }
 }
 
