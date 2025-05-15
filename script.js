@@ -66,8 +66,8 @@ const multiplayerButton = document.getElementById('multiplayerButton');
 const quitButton = document.getElementById('quitButton');
 
 // Movement variables
-const carSpeed = 0.2;
-const turnSpeed = 0.05; // Rotation speed
+const carSpeed = 0.2; // Forward and backward speed
+const turnSpeed = 0.05; // Turning speed (rotation)
 const jumpStrength = 0.5;
 const gravity = -0.02;
 const keys = {};
