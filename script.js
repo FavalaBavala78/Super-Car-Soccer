@@ -69,14 +69,20 @@ const quitButton = document.getElementById('quitButton');
 let carSpeed = 0.2; // Forward and backward speed
 const turnSpeed = 0.05; // Turning speed (rotation)
 const jumpStrength = 0.5;
-const flipSpeedBoost = 0.1; // Additional speed gained during a flip
+const flipSpeedBoost = 0.3; // Extra speed for flip (can be adjusted)
 const gravity = -0.02;
 const keys = {};
 let isJumping = false;
 let canDoubleJump = true; // Allows a second jump or flip
-let hasFlipped = false; // Tracks whether a flip has been performed
 let verticalVelocity = 0;
 let horizontalVelocity = { x: 0, z: 0 }; // Tracks car's momentum
+
+// Flip state
+let isFlipping = false;
+let flipDirection = null; // 'forward' or 'backward'
+let flipProgress = 0;
+const flipDuration = 12; // Frames to complete flip (adjust for speed)
+const fullFlipAngle = Math.PI * 2; // 360 degrees
 
 // Add event listeners for key presses
 document.addEventListener('keydown', (event) => {
@@ -118,27 +124,52 @@ function moveCar() {
 
 // Function to handle jumping and flipping
 function handleJumpOrFlip() {
-  if (keys[' '] && !isJumping) { // Initial jump
+  // Initial jump
+  if (keys[' '] && !isJumping && !isFlipping) {
     isJumping = true;
     verticalVelocity = jumpStrength;
-  } else if (keys[' '] && isJumping && canDoubleJump && !hasFlipped) {
-    // Handle mid-air flip only if a movement key is pressed
-    if (keys['ArrowUp'] || keys['w']) {
-      // Perform a forward flip
-      car.rotation.x -= Math.PI / 2; // Rotate forward
-      carSpeed += flipSpeedBoost * 3; // Triple the speed boost when flipping (FASTER!)
-      hasFlipped = true;
-    } else if (keys['ArrowDown'] || keys['s']) {
-      // Perform a backward flip
-      car.rotation.x += Math.PI / 2; // Rotate backward
-      carSpeed += flipSpeedBoost * 3; // Triple the speed boost when flipping (FASTER!)
-      hasFlipped = true;
-    }
-
-    // Prevent further flips or double jumps
-    canDoubleJump = false;
   }
 
+  // Flip logic: Only flip if already in the air, not already flipping, and holding a movement key while pressing spacebar
+  if (
+    isJumping && !isFlipping && canDoubleJump &&
+    keys[' '] &&
+    ((keys['ArrowUp'] || keys['w']) || (keys['ArrowDown'] || keys['s']))
+  ) {
+    if (keys['ArrowUp'] || keys['w']) {
+      // Forward flip
+      isFlipping = true;
+      flipDirection = 'forward';
+      flipProgress = 0;
+      carSpeed += flipSpeedBoost;
+    } else if (keys['ArrowDown'] || keys['s']) {
+      // Backward flip
+      isFlipping = true;
+      flipDirection = 'backward';
+      flipProgress = 0;
+      carSpeed += flipSpeedBoost;
+    }
+    canDoubleJump = false; // Only one flip per jump
+  }
+
+  // Animate flip if flipping
+  if (isFlipping) {
+    const flipStep = fullFlipAngle / flipDuration;
+    if (flipDirection === 'forward') {
+      car.rotation.x -= flipStep;
+    } else if (flipDirection === 'backward') {
+      car.rotation.x += flipStep;
+    }
+    flipProgress++;
+    if (flipProgress >= flipDuration) {
+      isFlipping = false;
+      flipDirection = null;
+      // Snap rotation to nearest 0 for perfect alignment
+      car.rotation.x = Math.round(car.rotation.x / (Math.PI * 2)) * (Math.PI * 2);
+    }
+  }
+
+  // Jump physics and landing
   if (isJumping) {
     car.position.y += verticalVelocity; // Apply vertical velocity
     verticalVelocity += gravity; // Apply gravity
@@ -150,11 +181,13 @@ function handleJumpOrFlip() {
     if (car.position.y <= 1.5) { // Stop jumping when car hits the ground
       car.position.y = 1.5;
       isJumping = false;
-      canDoubleJump = true; // Reset double jump ability
-      hasFlipped = false; // Reset flip state
+      canDoubleJump = true; // Reset double jump/flip ability
+      isFlipping = false;
+      flipDirection = null;
+      flipProgress = 0;
       verticalVelocity = 0;
       carSpeed = 0.2; // Reset speed after landing
-      car.rotation.x = 0; // Reset any flips
+      car.rotation.x = 0; // Reset flips
     }
   }
 }
@@ -187,7 +220,7 @@ quitButton.addEventListener('click', () => {
 // Game loop
 function animate() {
   requestAnimationFrame(animate);
-  
+
   // Update car movement and jumping/flipping
   moveCar();
   handleJumpOrFlip();
