@@ -1,4 +1,4 @@
-// Rocket League Inspired Game - Basic Mechanics
+// Rocket League Inspired Game - Advanced Mechanics
 
 // --- SCENE SETUP ---
 const scene = new THREE.Scene();
@@ -17,7 +17,10 @@ directionalLight.castShadow = true;
 scene.add(directionalLight);
 
 // --- FIELD (ARENA) ---
-const fieldGeometry = new THREE.PlaneGeometry(60, 40);
+// Increased field size
+const fieldWidth = 100;
+const fieldDepth = 70;
+const fieldGeometry = new THREE.PlaneGeometry(fieldWidth, fieldDepth);
 const fieldMaterial = new THREE.MeshStandardMaterial({ color: 0x0066cc });
 const field = new THREE.Mesh(fieldGeometry, fieldMaterial);
 field.rotation.x = -Math.PI / 2;
@@ -25,15 +28,12 @@ field.receiveShadow = true;
 scene.add(field);
 
 // --- ARENA WALLS WITH RAMPS AND ROOF ---
-// Wall parameters
 const wallHeight = 8;
 const wallThickness = 1;
-const fieldWidth = 60;
-const fieldDepth = 40;
 const rampHeight = 3.5;
 const rampDepth = 4;
 
-// Walls (left, right, near, far)
+// Walls
 function createWall(x, z, rotY = 0, length = fieldDepth, color = 0x333355) {
   const geometry = new THREE.BoxGeometry(wallThickness, wallHeight, length);
   const material = new THREE.MeshStandardMaterial({ color });
@@ -50,7 +50,7 @@ createWall((fieldWidth/2), 0, 0, fieldDepth);  // Right
 createWall(0, -(fieldDepth/2), Math.PI/2, fieldWidth); // Near
 createWall(0, (fieldDepth/2), Math.PI/2, fieldWidth);  // Far
 
-// Ramps (blend ground to walls)
+// Ramps
 function createRamp(x, z, rotY = 0, color = 0x222244) {
   const geometry = new THREE.BoxGeometry(rampDepth, rampHeight, fieldDepth - 2 * rampDepth);
   geometry.translate(rampDepth / 2, rampHeight / 2, 0);
@@ -65,9 +65,9 @@ function createRamp(x, z, rotY = 0, color = 0x222244) {
   return ramp;
 }
 createRamp(-(fieldWidth/2) + rampDepth/2, 0, 0); // Left ramp
-createRamp((fieldWidth/2) - rampDepth/2, 0, Math.PI, 0x222244); // Right ramp (flip)
+createRamp((fieldWidth/2) - rampDepth/2, 0, Math.PI, 0x222244); // Right ramp
+
 function createRampZ(x, z, rotY = 0, color = 0x222244) {
-  // For near/far ramps
   const geometry = new THREE.BoxGeometry(fieldWidth - 2 * rampDepth, rampHeight, rampDepth);
   geometry.translate(0, rampHeight / 2, rampDepth / 2);
   const material = new THREE.MeshStandardMaterial({ color });
@@ -81,7 +81,7 @@ function createRampZ(x, z, rotY = 0, color = 0x222244) {
   return ramp;
 }
 createRampZ(0, -(fieldDepth/2) + rampDepth/2, 0); // Near ramp
-createRampZ(0, (fieldDepth/2) - rampDepth/2, Math.PI, 0x222244); // Far ramp (flip)
+createRampZ(0, (fieldDepth/2) - rampDepth/2, Math.PI, 0x222244); // Far ramp
 
 // --- ROOF ---
 const roofGeometry = new THREE.PlaneGeometry(fieldWidth, fieldDepth);
@@ -94,18 +94,19 @@ scene.add(roof);
 
 // Add field lines and goals (visual only)
 function createGoal(x, color) {
-  const postGeometry = new THREE.BoxGeometry(0.5, 4, 8);
+  const postGeometry = new THREE.BoxGeometry(0.5, 4, 12);
   const postMaterial = new THREE.MeshStandardMaterial({ color });
   const post = new THREE.Mesh(postGeometry, postMaterial);
   post.position.set(x, 2, 0);
   post.castShadow = true;
   scene.add(post);
 }
-createGoal(-30, 0xff3333); // Left
-createGoal(30, 0x33ff33); // Right
+createGoal(-fieldWidth/2, 0xff3333); // Left
+createGoal(fieldWidth/2, 0x33ff33); // Right
 
 // --- SOCCER BALL ---
-const ballRadius = 1.2;
+// Larger ball
+const ballRadius = 2.5;
 const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
 const ballMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
 const ball = new THREE.Mesh(ballGeometry, ballMaterial);
@@ -118,13 +119,14 @@ const ballRestitution = 0.8;
 const ballFriction = 0.99;
 
 // --- CAR SETUP ---
-const carBodyGeometry = new THREE.BoxGeometry(2, 1, 4);
+// Smaller car
+const carBodyGeometry = new THREE.BoxGeometry(1.2, 0.6, 2.2);
 const carBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 const carBody = new THREE.Mesh(carBodyGeometry, carBodyMaterial);
 carBody.castShadow = true;
 
 function createWheel(x, y, z) {
-  const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.5, 32);
+  const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.3, 32);
   const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
   const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
   wheel.rotation.z = Math.PI / 2;
@@ -133,15 +135,15 @@ function createWheel(x, y, z) {
   return wheel;
 }
 const wheels = [
-  createWheel(-0.8, -0.5, 1.5),
-  createWheel(0.8, -0.5, 1.5),
-  createWheel(-0.8, -0.5, -1.5),
-  createWheel(0.8, -0.5, -1.5)
+  createWheel(-0.5, -0.3, 1.0),
+  createWheel(0.5, -0.3, 1.0),
+  createWheel(-0.5, -0.3, -1.0),
+  createWheel(0.5, -0.3, -1.0)
 ];
 
 const car = new THREE.Group();
 car.add(carBody, ...wheels);
-car.position.set(0, 1.2, -10);
+car.position.set(0, 0.8, -15);
 scene.add(car);
 
 // --- BOOST PADS ---
@@ -157,20 +159,21 @@ function addBoostPad(x, z) {
   scene.add(pad);
   boostPads.push(pad);
 }
-addBoostPad(0, 15);
-addBoostPad(0, -15);
-addBoostPad(-20, 0);
-addBoostPad(20, 0);
+addBoostPad(0, 25);
+addBoostPad(0, -25);
+addBoostPad(-35, 0);
+addBoostPad(35, 0);
 
 // --- MOVEMENT & GAME VARIABLES ---
 const baseCarSpeed = 0.25;
 const maxCarSpeed = 1.6;
 const turnSpeed = 0.045;
 const airTurnSpeed = 0.03;
-const jumpStrength = 0.5;
-const doubleJumpStrength = 0.5;
+const jumpStrength = 0.35;
+const doubleJumpStrength = 0.35;
 const flipBoost = 0.8;
-const gravity = -0.025;
+// Lower gravity
+const gravity = -0.0125;
 const keys = {};
 let carSpeed = baseCarSpeed;
 let isJumping = false, canDoubleJump = true, hasDoubleJumped = false, isFlipping = false, flipDirection = null, flipProgress = 0;
@@ -224,12 +227,24 @@ function updateBoostPads() {
 }
 
 // --- CAR MOVEMENT ---
+// Allow boosting to switch direction instantly and allow car rotation (pitch) in air
 function moveCar() {
   // Handle boost
   if ((keys['Shift'] || keys['shift']) && boost > 0) {
     isBoosting = true;
     carSpeed = Math.min(carSpeed + boostSpeedIncrement, maxCarSpeed);
     boost = Math.max(0, boost - boostDecrement);
+    // Allow instant direction change when boosting
+    if ((keys['ArrowUp'] || keys['w']) || (keys['ArrowDown'] || keys['s'])) {
+      if (keys['ArrowUp'] || keys['w']) {
+        horizontalVelocity.x = -Math.sin(car.rotation.y) * carSpeed;
+        horizontalVelocity.z = -Math.cos(car.rotation.y) * carSpeed;
+      }
+      if (keys['ArrowDown'] || keys['s']) {
+        horizontalVelocity.x = Math.sin(car.rotation.y) * carSpeed;
+        horizontalVelocity.z = Math.cos(car.rotation.y) * carSpeed;
+      }
+    }
   } else {
     isBoosting = false;
     carSpeed = Math.max(baseCarSpeed, carSpeed - boostSpeedIncrement);
@@ -239,6 +254,14 @@ function moveCar() {
   let currentTurnSpeed = !isJumping ? turnSpeed : airTurnSpeed;
   if (keys['ArrowLeft'] || keys['a']) car.rotation.y += currentTurnSpeed;
   if (keys['ArrowRight'] || keys['d']) car.rotation.y -= currentTurnSpeed;
+
+  // Car air rotation - pitch (forward/backward flip), only in air or always for more fun
+  if (isJumping || true) {
+    if (keys['w']) car.rotation.x -= 0.05;
+    if (keys['s']) car.rotation.x += 0.05;
+    // Clamp pitch for realism
+    car.rotation.x = Math.max(Math.min(car.rotation.x, Math.PI/2), -Math.PI/2);
+  }
 
   // Forward/Backward (only on ground)
   if (!isJumping) {
@@ -352,8 +375,8 @@ function handleJumpOrFlip() {
     car.position.x += horizontalVelocity.x;
     car.position.z += horizontalVelocity.z;
 
-    if (car.position.y <= 1.2) {
-      car.position.y = 1.2;
+    if (car.position.y <= 0.8) {
+      car.position.y = 0.8;
       isJumping = false;
       canDoubleJump = true;
       isFlipping = false;
@@ -389,18 +412,18 @@ function updateBall() {
   }
 
   // Wall collision
-  if (Math.abs(ball.position.x) + ballRadius > 30) {
-    ball.position.x = Math.sign(ball.position.x) * (30 - ballRadius);
+  if (Math.abs(ball.position.x) + ballRadius > fieldWidth/2) {
+    ball.position.x = Math.sign(ball.position.x) * ((fieldWidth/2) - ballRadius);
     ballVelocity.x *= -ballRestitution;
   }
-  if (Math.abs(ball.position.z) + ballRadius > 20) {
-    ball.position.z = Math.sign(ball.position.z) * (20 - ballRadius);
+  if (Math.abs(ball.position.z) + ballRadius > fieldDepth/2) {
+    ball.position.z = Math.sign(ball.position.z) * ((fieldDepth/2) - ballRadius);
     ballVelocity.z *= -ballRestitution;
   }
   // Roof collision
   if (ball.position.y + ballRadius > wallHeight) {
     ball.position.y = wallHeight - ballRadius;
-    ballVelocity.y *= -ballRestitution * 0.85; // Slightly less bounce
+    ballVelocity.y *= -ballRestitution * 0.85;
   }
 
   // --- CAR TO BALL COLLISION ---
@@ -409,7 +432,7 @@ function updateBall() {
     (ball.position.y - car.position.y) ** 2 +
     (ball.position.z - car.position.z) ** 2
   );
-  if (dist < ballRadius + 1.5) {
+  if (dist < ballRadius + 1.2) {
     // Kick the ball in the direction the car is moving
     let dx = ball.position.x - car.position.x;
     let dy = ball.position.y - car.position.y;
@@ -421,9 +444,9 @@ function updateBall() {
     ballVelocity.y = Math.abs(verticalVelocity) > 0.15 ? dy * (power + 0.15) : ballVelocity.y;
     ballVelocity.z = dz * power;
     // Move ball out of car
-    ball.position.x = car.position.x + dx * (ballRadius + 1.6);
-    ball.position.y = Math.max(car.position.y + dy * (ballRadius + 1.6), ballRadius + 0.1);
-    ball.position.z = car.position.z + dz * (ballRadius + 1.6);
+    ball.position.x = car.position.x + dx * (ballRadius + 1.3);
+    ball.position.y = Math.max(car.position.y + dy * (ballRadius + 1.3), ballRadius + 0.1);
+    ball.position.z = car.position.z + dz * (ballRadius + 1.3);
   }
 }
 
@@ -479,8 +502,8 @@ function showGoalMessage(team) {
 function checkGoal() {
   // Left Goal (Red goal): Green scores
   if (
-    ball.position.x - ballRadius < -29 &&
-    Math.abs(ball.position.z) < 4 &&
+    ball.position.x - ballRadius < -(fieldWidth/2 - 1) &&
+    Math.abs(ball.position.z) < 8 &&
     ball.position.y < 3
   ) {
     greenScore += 1;
@@ -490,8 +513,8 @@ function checkGoal() {
   }
   // Right Goal (Green goal): Red scores
   else if (
-    ball.position.x + ballRadius > 29 &&
-    Math.abs(ball.position.z) < 4 &&
+    ball.position.x + ballRadius > (fieldWidth/2 - 1) &&
+    Math.abs(ball.position.z) < 8 &&
     ball.position.y < 3
   ) {
     redScore += 1;
@@ -504,7 +527,7 @@ function checkGoal() {
 // --- GOAL RESET ---
 function resetAfterGoal() {
   ball.position.set(0, ballRadius, 0);
-  car.position.set(0, 1.2, -10);
+  car.position.set(0, 0.8, -15);
   car.rotation.set(0, 0, 0);
   ballVelocity.x = 0;
   ballVelocity.y = 0;
