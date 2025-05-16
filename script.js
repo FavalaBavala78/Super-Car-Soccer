@@ -735,3 +735,93 @@ function moveCar() {
 }
 
 // ... (rest of your code remains unchanged)
+// ... (previous code remains unchanged)
+
+// --- PLAYER PREVIEW ON GOAL ---
+function showPlayerPreview(team) {
+  // Remove any existing preview
+  let existing = document.getElementById('playerPreview');
+  if (existing) existing.remove();
+
+  // Create overlay div
+  const previewDiv = document.createElement('div');
+  previewDiv.id = 'playerPreview';
+  previewDiv.style.position = 'fixed';
+  previewDiv.style.top = '0';
+  previewDiv.style.left = '0';
+  previewDiv.style.width = '100vw';
+  previewDiv.style.height = '100vh';
+  previewDiv.style.background = 'rgba(0,0,0,0.85)';
+  previewDiv.style.display = 'flex';
+  previewDiv.style.flexDirection = 'column';
+  previewDiv.style.alignItems = 'center';
+  previewDiv.style.justifyContent = 'center';
+  previewDiv.style.zIndex = '999';
+  previewDiv.style.transition = 'opacity 0.5s';
+
+  // Dummy preview (replace with real player info if available)
+  const avatar = document.createElement('div');
+  avatar.style.width = '180px';
+  avatar.style.height = '180px';
+  avatar.style.borderRadius = '50%';
+  avatar.style.background = team === "red" ? "#ff3333" : "#33ff33";
+  avatar.style.display = 'flex';
+  avatar.style.alignItems = 'center';
+  avatar.style.justifyContent = 'center';
+  avatar.style.fontSize = '100px';
+  avatar.style.color = "#fff";
+  avatar.innerText = team === "red" ? "🟥" : "🟩";
+
+  // Name (use actual player name if available, else placeholder)
+  const name = document.createElement('div');
+  name.style.color = '#fff';
+  name.style.fontSize = '38px';
+  name.style.fontWeight = 'bold';
+  name.style.marginTop = '28px';
+  name.innerText = team === "red" ? "Red Player" : "Green Player";
+
+  previewDiv.appendChild(avatar);
+  previewDiv.appendChild(name);
+
+  document.body.appendChild(previewDiv);
+
+  // Remove preview and reset after 2.2s
+  setTimeout(() => {
+    previewDiv.style.opacity = '0';
+    setTimeout(() => {
+      previewDiv.remove();
+      resetAfterGoal(); // Go back to kickoff
+    }, 350);
+  }, 1800);
+}
+
+// --- GOAL DETECTION (MODIFIED TO SHOW PLAYER PREVIEW) ---
+function checkGoal() {
+  // Left Goal (Red goal): Green scores
+  if (
+    ball.position.x - ballRadius < -(fieldWidth/2 - 1) &&
+    Math.abs(ball.position.z) < 8 &&
+    ball.position.y < 3
+  ) {
+    greenScore += 1;
+    updateScoreDisplay();
+    showGoalMessage("green");
+    showPlayerPreview("green");
+    // Do NOT call resetAfterGoal() here, it is called after preview
+  }
+  // Right Goal (Green goal): Red scores
+  else if (
+    ball.position.x + ballRadius > (fieldWidth/2 - 1) &&
+    Math.abs(ball.position.z) < 8 &&
+    ball.position.y < 3
+  ) {
+    redScore += 1;
+    updateScoreDisplay();
+    showGoalMessage("red");
+    showPlayerPreview("red");
+    // Do NOT call resetAfterGoal() here, it is called after preview
+  }
+}
+
+// --- GOAL RESET (no change needed) ---
+// ... (rest of your code remains unchanged)
