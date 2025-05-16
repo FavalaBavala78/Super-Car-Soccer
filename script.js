@@ -556,3 +556,92 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+// ... (all code above remains unchanged)
+
+// --- MOVEMENT & GAME VARIABLES ---
+const baseCarSpeed = 0.25;
+const maxCarSpeed = 1.6;
+const acceleration = 0.012; // NEW: acceleration per frame
+const deceleration = 0.018; // NEW: natural slow down per frame
+const turnSpeed = 0.045;
+const airTurnSpeed = 0.03;
+const jumpStrength = 0.35;
+const doubleJumpStrength = 0.35;
+const flipBoost = 0.8;
+const gravity = -0.0125;
+const keys = {};
+let carSpeed = 0; // START AT 0 FOR GRADUAL ACCELERATION
+let targetSpeed = 0;
+let isJumping = false, canDoubleJump = true, hasDoubleJumped = false, isFlipping = false, flipDirection = null, flipProgress = 0;
+let verticalVelocity = 0;
+let horizontalVelocity = { x: 0, z: 0 };
+
+// ... (boost variables, boostDisplay, etc. remain unchanged)
+
+// --- CAR MOVEMENT ---
+// Allow boosting to switch direction instantly and allow car rotation (pitch) in air
+function moveCar() {
+  // Determine target speed
+  if ((keys['ArrowUp'] || keys['w'])) {
+    targetSpeed = maxCarSpeed;
+  } else if ((keys['ArrowDown'] || keys['s'])) {
+    targetSpeed = -maxCarSpeed * 0.7; // Reverse is slower
+  } else {
+    targetSpeed = 0;
+  }
+
+  // Handle boost
+  if ((keys['Shift'] || keys['shift']) && boost > 0) {
+    targetSpeed = targetSpeed > 0 ? maxCarSpeed * 1.15 : -maxCarSpeed * 0.8;
+    boost = Math.max(0, boost - boostDecrement);
+    isBoosting = true;
+  } else {
+    isBoosting = false;
+  }
+
+  // Gradually approach target speed (acceleration/deceleration)
+  if (carSpeed < targetSpeed) {
+    carSpeed = Math.min(carSpeed + acceleration, targetSpeed);
+  } else if (carSpeed > targetSpeed) {
+    carSpeed = Math.max(carSpeed - deceleration, targetSpeed);
+  }
+
+  // Natural slow down (friction) when no input
+  if (Math.abs(targetSpeed) < 0.01 && Math.abs(carSpeed) > 0.01) {
+    carSpeed -= Math.sign(carSpeed) * deceleration * 0.5;
+    if (Math.abs(carSpeed) < 0.01) carSpeed = 0;
+  }
+
+  // Turning (always allowed, slower in air)
+  let currentTurnSpeed = !isJumping ? turnSpeed : airTurnSpeed;
+  if (keys['ArrowLeft'] || keys['a']) car.rotation.y += currentTurnSpeed;
+  if (keys['ArrowRight'] || keys['d']) car.rotation.y -= currentTurnSpeed;
+
+  // Car air rotation - pitch (forward/backward flip), only in air or always for more fun
+  if (isJumping || true) {
+    if (keys['w']) car.rotation.x -= 0.05;
+    if (keys['s']) car.rotation.x += 0.05;
+    // Clamp pitch for realism
+    car.rotation.x = Math.max(Math.min(car.rotation.x, Math.PI/2), -Math.PI/2);
+  }
+
+  // Move car
+  if (!isJumping) {
+    car.position.x -= Math.sin(car.rotation.y) * carSpeed;
+    car.position.z -= Math.cos(car.rotation.y) * carSpeed;
+    horizontalVelocity.x = -Math.sin(car.rotation.y) * carSpeed;
+    horizontalVelocity.z = -Math.cos(car.rotation.y) * carSpeed;
+  } else if (isBoosting) {
+    // Allow instant direction switch in air only if boosting
+    if ((keys['ArrowUp'] || keys['w'])) {
+      horizontalVelocity.x = -Math.sin(car.rotation.y) * Math.abs(carSpeed);
+      horizontalVelocity.z = -Math.cos(car.rotation.y) * Math.abs(carSpeed);
+    }
+    if ((keys['ArrowDown'] || keys['s'])) {
+      horizontalVelocity.x = Math.sin(car.rotation.y) * Math.abs(carSpeed);
+      horizontalVelocity.z = Math.cos(car.rotation.y) * Math.abs(carSpeed);
+    }
+  }
+}
+
+// ... (rest of your code remains unchanged)
