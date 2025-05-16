@@ -816,3 +816,110 @@ function handleJumpOrFlip() {
 }
 
 // ... (rest of your code remains unchanged)
+// ... (existing code above remains unchanged)
+
+// --- SCORE LOGIC ---
+// Add score UI
+const scoreDisplay = document.createElement('div');
+scoreDisplay.style.position = 'fixed';
+scoreDisplay.style.top = '20px';
+scoreDisplay.style.left = '50%';
+scoreDisplay.style.transform = 'translateX(-50%)';
+scoreDisplay.style.color = '#fff';
+scoreDisplay.style.fontFamily = 'Arial';
+scoreDisplay.style.fontSize = '36px';
+scoreDisplay.style.background = 'rgba(0,0,0,0.6)';
+scoreDisplay.style.padding = '12px 24px';
+scoreDisplay.style.borderRadius = '8px';
+scoreDisplay.style.zIndex = '20';
+scoreDisplay.innerText = "Red: 0  |  Green: 0";
+document.body.appendChild(scoreDisplay);
+
+let redScore = 0;
+let greenScore = 0;
+
+function updateScoreDisplay() {
+  scoreDisplay.innerText = `Red: ${redScore}  |  Green: ${greenScore}`;
+}
+
+// Sound or visual for scoring (optional)
+function showGoalMessage(team) {
+  const goalMsg = document.createElement('div');
+  goalMsg.style.position = 'fixed';
+  goalMsg.style.top = '50%';
+  goalMsg.style.left = '50%';
+  goalMsg.style.transform = 'translate(-50%, -50%)';
+  goalMsg.style.fontSize = '64px';
+  goalMsg.style.fontWeight = 'bold';
+  goalMsg.style.color = team === "red" ? "#ff3333" : "#33ff33";
+  goalMsg.style.textShadow = "0 4px 32px #000";
+  goalMsg.style.zIndex = '99';
+  goalMsg.style.pointerEvents = 'none';
+  goalMsg.innerText = `${team.charAt(0).toUpperCase() + team.slice(1)} Scores!`;
+  document.body.appendChild(goalMsg);
+  setTimeout(() => { goalMsg.remove(); }, 1600);
+}
+
+// --- GOAL DETECTION ---
+// Left goal: x < -29, z between -4 and 4, y below 3
+// Right goal: x > 29, z between -4 and 4, y below 3
+
+function checkGoal() {
+  // Left Goal (Red goal): Green scores
+  if (
+    ball.position.x - ballRadius < -29 &&
+    Math.abs(ball.position.z) < 4 &&
+    ball.position.y < 3
+  ) {
+    greenScore += 1;
+    updateScoreDisplay();
+    showGoalMessage("green");
+    resetAfterGoal();
+  }
+  // Right Goal (Green goal): Red scores
+  else if (
+    ball.position.x + ballRadius > 29 &&
+    Math.abs(ball.position.z) < 4 &&
+    ball.position.y < 3
+  ) {
+    redScore += 1;
+    updateScoreDisplay();
+    showGoalMessage("red");
+    resetAfterGoal();
+  }
+}
+
+// --- GOAL RESET ---
+function resetAfterGoal() {
+  // Reset positions
+  ball.position.set(0, ballRadius, 0);
+  car.position.set(0, 1.2, -10);
+  car.rotation.set(0, 0, 0);
+  ballVelocity.x = 0;
+  ballVelocity.y = 0;
+  ballVelocity.z = 0;
+  verticalVelocity = 0;
+  horizontalVelocity.x = 0;
+  horizontalVelocity.z = 0;
+  isJumping = false;
+  isFlipping = false;
+  flipDirection = null;
+  flipProgress = 0;
+  hasDoubleJumped = false;
+  boost = maxBoost;
+}
+
+// --- GAME LOOP (update to call checkGoal) ---
+function animate() {
+  requestAnimationFrame(animate);
+  moveCar();
+  handleJumpOrFlip();
+  updateBoostPads();
+  updateBall();
+  checkGoal(); // <-- Add this line
+  updateCamera();
+  boostDisplay.innerText = `Boost: ${Math.floor(boost)}`;
+  renderer.render(scene, camera);
+}
+
+// ... (rest of your code remains unchanged)
