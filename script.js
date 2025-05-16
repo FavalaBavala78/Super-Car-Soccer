@@ -106,7 +106,7 @@ createGoal(fieldWidth/2, 0x33ff33); // Right
 
 // --- SOCCER BALL ---
 // Larger ball
-const ballRadius = 2.5;
+const ballRadius = 4.5;
 const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
 const ballMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
 const ball = new THREE.Mesh(ballGeometry, ballMaterial);
