@@ -541,3 +541,119 @@ multiplayerMenu.addEventListener('keydown', (e) => {
 });
 
 // ... (rest of your code remains unchanged)
+// ... (all your Rocket League game code above remains unchanged)
+
+// --- JUMP, DOUBLE JUMP, AND FLIP (with only spacebar needed) ---
+let jumpKeyWasDown = false;
+
+function handleJumpOrFlip() {
+  // SPACEBAR handling: jump, double jump, flip (only spacebar needed)
+  const jumpKey = keys[' '];
+
+  // Detect "just pressed" event for spacebar
+  if (jumpKey && !jumpKeyWasDown) {
+    // Initial jump (from ground)
+    if (!isJumping && !isFlipping) {
+      isJumping = true;
+      verticalVelocity = jumpStrength;
+      hasDoubleJumped = false;
+      canDoubleJump = true;
+    }
+    // While airborne, check for flip or double jump
+    else if (isJumping && !isFlipping && canDoubleJump) {
+      // FLIP: If a movement key is held, determine flip direction and apply directional boost
+      if (
+        (keys['ArrowUp'] || keys['w']) ||
+        (keys['ArrowDown'] || keys['s']) ||
+        (keys['ArrowLeft'] || keys['a']) ||
+        (keys['ArrowRight'] || keys['d'])
+      ) {
+        if (keys['ArrowUp'] || keys['w']) flipDirection = 'forward';
+        else if (keys['ArrowDown'] || keys['s']) flipDirection = 'backward';
+        else if (keys['ArrowLeft'] || keys['a']) flipDirection = 'left';
+        else if (keys['ArrowRight'] || keys['d']) flipDirection = 'right';
+        isFlipping = true;
+        flipProgress = 0;
+
+        // Directional boost vector
+        let boostVec = { x: 0, z: 0 };
+        const angle = car.rotation.y;
+        switch (flipDirection) {
+          case 'forward':
+            boostVec.x = -Math.sin(angle) * flipBoost;
+            boostVec.z = -Math.cos(angle) * flipBoost;
+            break;
+          case 'backward':
+            boostVec.x = Math.sin(angle) * flipBoost;
+            boostVec.z = Math.cos(angle) * flipBoost;
+            break;
+          case 'left':
+            boostVec.x = -Math.cos(angle) * flipBoost;
+            boostVec.z = Math.sin(angle) * flipBoost;
+            break;
+          case 'right':
+            boostVec.x = Math.cos(angle) * flipBoost;
+            boostVec.z = -Math.sin(angle) * flipBoost;
+            break;
+        }
+        horizontalVelocity.x = boostVec.x;
+        horizontalVelocity.z = boostVec.z;
+        canDoubleJump = false;
+        hasDoubleJumped = false;
+      }
+      // DOUBLE JUMP: If NO movement key, DOUBLE JUMP
+      else if (!hasDoubleJumped) {
+        verticalVelocity = doubleJumpStrength;
+        hasDoubleJumped = true;
+        canDoubleJump = false;
+      }
+    }
+  }
+
+  jumpKeyWasDown = jumpKey;
+
+  // Animate flip if flipping
+  if (isFlipping) {
+    const flipStep = fullFlipAngle / flipDuration;
+    switch (flipDirection) {
+      case 'forward': car.rotation.x -= flipStep; break;
+      case 'backward': car.rotation.x += flipStep; break;
+      case 'left': car.rotation.z += flipStep; break;
+      case 'right': car.rotation.z -= flipStep; break;
+    }
+    flipProgress++;
+    if (flipProgress >= flipDuration) {
+      isFlipping = false;
+      if (flipDirection === 'forward' || flipDirection === 'backward')
+        car.rotation.x = Math.round(car.rotation.x / (Math.PI * 2)) * (Math.PI * 2);
+      else car.rotation.z = Math.round(car.rotation.z / (Math.PI * 2)) * (Math.PI * 2);
+      flipDirection = null;
+    }
+  }
+
+  // Jump physics and landing
+  if (isJumping) {
+    car.position.y += verticalVelocity;
+    verticalVelocity += gravity;
+    car.position.x += horizontalVelocity.x;
+    car.position.z += horizontalVelocity.z;
+
+    if (car.position.y <= 1.2) {
+      car.position.y = 1.2;
+      isJumping = false;
+      canDoubleJump = true;
+      isFlipping = false;
+      flipDirection = null;
+      flipProgress = 0;
+      hasDoubleJumped = false;
+      verticalVelocity = 0;
+      carSpeed = baseCarSpeed;
+      car.rotation.x = 0;
+      car.rotation.z = 0;
+      horizontalVelocity.x = 0;
+      horizontalVelocity.z = 0;
+    }
+  }
+}
+
+// ... (rest of your code remains unchanged)
