@@ -68,12 +68,15 @@ const quitButton = document.getElementById('quitButton');
 // Movement variables
 let carSpeed = 0.2; // Forward and backward speed
 const turnSpeed = 0.05; // Turning speed (rotation)
+const airTurnSpeed = 0.03; // Slightly slower turning in air
 const jumpStrength = 0.5;
+const doubleJumpStrength = 0.5;
 const flipSpeedBoost = 0.3; // Extra speed for flip (can be adjusted)
 const gravity = -0.02;
 const keys = {};
 let isJumping = false;
 let canDoubleJump = true; // Allows a second jump or flip
+let hasDoubleJumped = false; // True if double jump was used
 let verticalVelocity = 0;
 let horizontalVelocity = { x: 0, z: 0 }; // Tracks car's momentum
 
@@ -95,61 +98,76 @@ document.addEventListener('keyup', (event) => {
 
 // Function to handle car movement and turning
 function moveCar() {
-  // Allow movement and turning only if the car is not flipping mid-air
-  if (!isJumping || canDoubleJump) {
-    if (keys['ArrowUp'] || keys['w']) {
-      // Move forward in the direction the car is facing
-      car.position.x -= Math.sin(car.rotation.y) * carSpeed;
-      car.position.z -= Math.cos(car.rotation.y) * carSpeed;
-      horizontalVelocity.x = -Math.sin(car.rotation.y) * carSpeed; // Save momentum
-      horizontalVelocity.z = -Math.cos(car.rotation.y) * carSpeed;
-    }
-    if (keys['ArrowDown'] || keys['s']) {
-      // Move backward in the direction the car is facing
-      car.position.x += Math.sin(car.rotation.y) * carSpeed;
-      car.position.z += Math.cos(car.rotation.y) * carSpeed;
-      horizontalVelocity.x = Math.sin(car.rotation.y) * carSpeed; // Save momentum
-      horizontalVelocity.z = Math.cos(car.rotation.y) * carSpeed;
-    }
+  // Allow movement and turning on ground or turning in air
+  if (!isJumping || (isJumping && !isFlipping)) {
+    // Ground or air control
+    let currentTurnSpeed = !isJumping ? turnSpeed : airTurnSpeed;
+
     if (keys['ArrowLeft'] || keys['a']) {
       // Turn left
-      car.rotation.y += turnSpeed;
+      car.rotation.y += currentTurnSpeed;
     }
     if (keys['ArrowRight'] || keys['d']) {
       // Turn right
-      car.rotation.y -= turnSpeed;
+      car.rotation.y -= currentTurnSpeed;
+    }
+
+    if (!isJumping) {
+      // Move only on ground
+      if (keys['ArrowUp'] || keys['w']) {
+        car.position.x -= Math.sin(car.rotation.y) * carSpeed;
+        car.position.z -= Math.cos(car.rotation.y) * carSpeed;
+        horizontalVelocity.x = -Math.sin(car.rotation.y) * carSpeed; // Save momentum
+        horizontalVelocity.z = -Math.cos(car.rotation.y) * carSpeed;
+      }
+      if (keys['ArrowDown'] || keys['s']) {
+        car.position.x += Math.sin(car.rotation.y) * carSpeed;
+        car.position.z += Math.cos(car.rotation.y) * carSpeed;
+        horizontalVelocity.x = Math.sin(car.rotation.y) * carSpeed; // Save momentum
+        horizontalVelocity.z = Math.cos(car.rotation.y) * carSpeed;
+      }
     }
   }
 }
 
-// Function to handle jumping and flipping
+// Function to handle jumping, double jumping, and flipping
 function handleJumpOrFlip() {
-  // Initial jump
+  // Initial jump (from ground)
   if (keys[' '] && !isJumping && !isFlipping) {
     isJumping = true;
     verticalVelocity = jumpStrength;
+    hasDoubleJumped = false;
+    canDoubleJump = true;
   }
 
-  // Flip logic: Only flip if already in the air, not already flipping, and holding a movement key while pressing spacebar
+  // While airborne, check for flip or double jump
   if (
-    isJumping && !isFlipping && canDoubleJump &&
-    keys[' '] &&
-    ((keys['ArrowUp'] || keys['w']) || (keys['ArrowDown'] || keys['s']))
+    isJumping && !isFlipping && canDoubleJump && keys[' ']
   ) {
-    if (keys['ArrowUp'] || keys['w']) {
-      // Forward flip
-      isFlipping = true;
-      flipDirection = 'forward';
-      flipProgress = 0;
-      carSpeed += flipSpeedBoost;
-    } else if (keys['ArrowDown'] || keys['s']) {
-      // Backward flip
-      isFlipping = true;
-      flipDirection = 'backward';
-      flipProgress = 0;
-      carSpeed += flipSpeedBoost;
+    // If a movement key is held, FLIP
+    if ((keys['ArrowUp'] || keys['w']) || (keys['ArrowDown'] || keys['s'])) {
+      if (keys['ArrowUp'] || keys['w']) {
+        // Forward flip
+        isFlipping = true;
+        flipDirection = 'forward';
+        flipProgress = 0;
+        carSpeed += flipSpeedBoost;
+      } else if (keys['ArrowDown'] || keys['s']) {
+        // Backward flip
+        isFlipping = true;
+        flipDirection = 'backward';
+        flipProgress = 0;
+        carSpeed += flipSpeedBoost;
+      }
+      canDoubleJump = false; // Only one flip/double jump per air time
+      hasDoubleJumped = false;
     }
-    canDoubleJump = false; // Only one flip per jump
+    // If NO movement key, DOUBLE JUMP
+    else if (!hasDoubleJumped) {
+      verticalVelocity = doubleJumpStrength;
+      hasDoubleJumped = true;
+      canDoubleJump = false;
+    }
   }
 
   // Animate flip if flipping
@@ -185,6 +203,7 @@ function handleJumpOrFlip() {
       isFlipping = false;
       flipDirection = null;
       flipProgress = 0;
+      hasDoubleJumped = false;
       verticalVelocity = 0;
       carSpeed = 0.2; // Reset speed after landing
       car.rotation.x = 0; // Reset flips
