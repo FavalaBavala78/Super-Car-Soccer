@@ -361,3 +361,17 @@ function animate() {
 }
 
 animate();
+// ... (all code above remains unchanged)
+
+// Play button functionality: start the game loop when clicked, only once
+let gameStarted = false;
+
+playButton.addEventListener('click', () => {
+  if (!gameStarted) {
+    menu.style.display = 'none'; // Hide menu
+    animate(); // Start the game loop
+    gameStarted = true; // Prevent multiple loops
+  }
+});
+
+// ... (rest of your code remains unchanged)
