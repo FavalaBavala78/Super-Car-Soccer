@@ -375,3 +375,110 @@ playButton.addEventListener('click', () => {
 });
 
 // ... (rest of your code remains unchanged)
+// ... (all your Rocket League game code above remains unchanged)
+
+// --- MULTIPLAYER MENU UI ---
+const multiplayerMenu = document.createElement('div');
+multiplayerMenu.style.position = 'fixed';
+multiplayerMenu.style.top = '50%';
+multiplayerMenu.style.left = '50%';
+multiplayerMenu.style.transform = 'translate(-50%, -50%)';
+multiplayerMenu.style.background = 'rgba(20, 20, 20, 0.95)';
+multiplayerMenu.style.padding = '32px';
+multiplayerMenu.style.display = 'none';
+multiplayerMenu.style.flexDirection = 'column';
+multiplayerMenu.style.alignItems = 'center';
+multiplayerMenu.style.borderRadius = '10px';
+multiplayerMenu.style.boxShadow = '0 8px 32px rgba(0,0,0,0.25)';
+multiplayerMenu.innerHTML = `
+  <h2 style="color:white; margin-bottom:24px;">Multiplayer</h2>
+  <button id="createMatchBtn" style="margin: 8px 0; font-size: 18px; padding: 10px 30px;">Create</button>
+  <button id="joinMatchBtn" style="margin: 8px 0; font-size: 18px; padding: 10px 30px;">Join</button>
+  <div id="multiplayerCreate" style="display:none; margin-top:20px;">
+    <div style="color:white; margin-bottom:12px;">Your Match Code:</div>
+    <input id="matchCodeDisplay" readonly style="font-size:22px; text-align:center; width:120px;"/>
+    <div style="color: #aaa; margin-top:8px;">Share this code for others to join.</div>
+    <button id="backFromCreateBtn" style="margin-top:18px;">Back</button>
+  </div>
+  <div id="multiplayerJoin" style="display:none; margin-top:20px;">
+    <div style="color:white; margin-bottom:12px;">Enter Match Code:</div>
+    <input id="matchCodeInput" style="font-size:22px; width:120px; text-align:center;" maxlength="8" />
+    <button id="joinCodeBtn" style="margin-left: 12px;">Join</button>
+    <div id="joinError" style="color:red; margin-top:8px; min-height:22px;"></div>
+    <button id="backFromJoinBtn" style="margin-top:18px;">Back</button>
+  </div>
+`;
+document.body.appendChild(multiplayerMenu);
+
+// --- Multiplayer Button Event ---
+multiplayerButton.addEventListener('click', () => {
+  menu.style.display = 'none';
+  multiplayerMenu.style.display = 'flex';
+  // Hide create/join panes on open
+  document.getElementById('multiplayerCreate').style.display = 'none';
+  document.getElementById('multiplayerJoin').style.display = 'none';
+});
+
+// --- CREATE MATCH ---
+function generateMatchCode(length = 6) {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < length; ++i) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+let currentMatchCode = null;
+
+document.getElementById('createMatchBtn').onclick = () => {
+  // Generate a code and display it
+  currentMatchCode = generateMatchCode();
+  document.getElementById('matchCodeDisplay').value = currentMatchCode;
+  document.getElementById('multiplayerCreate').style.display = 'block';
+  document.getElementById('multiplayerJoin').style.display = 'none';
+};
+
+document.getElementById('backFromCreateBtn').onclick = () => {
+  document.getElementById('multiplayerCreate').style.display = 'none';
+};
+
+// --- JOIN MATCH ---
+document.getElementById('joinMatchBtn').onclick = () => {
+  document.getElementById('multiplayerJoin').style.display = 'block';
+  document.getElementById('multiplayerCreate').style.display = 'none';
+  document.getElementById('joinError').innerText = '';
+  document.getElementById('matchCodeInput').value = '';
+};
+
+document.getElementById('backFromJoinBtn').onclick = () => {
+  document.getElementById('multiplayerJoin').style.display = 'none';
+  document.getElementById('joinError').innerText = '';
+  document.getElementById('matchCodeInput').value = '';
+};
+
+// --- JOIN BUTTON LOGIC (FAKE MATCH FOR DEMO) ---
+document.getElementById('joinCodeBtn').onclick = () => {
+  const code = document.getElementById('matchCodeInput').value.trim().toUpperCase();
+  // For real multiplayer, you would check with a server here
+  if (!code || code.length < 4) {
+    document.getElementById('joinError').innerText = 'Enter a valid code.';
+    return;
+  }
+  if (currentMatchCode && code === currentMatchCode) {
+    // Success! (For actual multiplayer, handle connection etc.)
+    document.getElementById('joinError').innerText = '';
+    multiplayerMenu.style.display = 'none';
+    alert('Joined match with code: ' + code + '\n(Multiplayer networking not implemented in this demo)');
+    // Start game/scene for multiplayer here.
+  } else {
+    document.getElementById('joinError').innerText = 'Match not found (demo: only works with code you just created)';
+  }
+};
+
+// --- Optionally: allow going back to main menu ---
+multiplayerMenu.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    multiplayerMenu.style.display = 'none';
+    menu.style.display = '';
+  }
+});
+
+// ... (rest of your code remains unchanged)
