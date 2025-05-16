@@ -24,6 +24,74 @@ field.rotation.x = -Math.PI / 2;
 field.receiveShadow = true;
 scene.add(field);
 
+// --- ARENA WALLS WITH RAMPS AND ROOF ---
+// Wall parameters
+const wallHeight = 8;
+const wallThickness = 1;
+const fieldWidth = 60;
+const fieldDepth = 40;
+const rampHeight = 3.5;
+const rampDepth = 4;
+
+// Walls (left, right, near, far)
+function createWall(x, z, rotY = 0, length = fieldDepth, color = 0x333355) {
+  const geometry = new THREE.BoxGeometry(wallThickness, wallHeight, length);
+  const material = new THREE.MeshStandardMaterial({ color });
+  const wall = new THREE.Mesh(geometry, material);
+  wall.position.set(x, wallHeight / 2, z);
+  wall.rotation.y = rotY;
+  wall.receiveShadow = true;
+  wall.castShadow = true;
+  scene.add(wall);
+  return wall;
+}
+createWall(-(fieldWidth/2), 0, 0, fieldDepth); // Left
+createWall((fieldWidth/2), 0, 0, fieldDepth);  // Right
+createWall(0, -(fieldDepth/2), Math.PI/2, fieldWidth); // Near
+createWall(0, (fieldDepth/2), Math.PI/2, fieldWidth);  // Far
+
+// Ramps (blend ground to walls)
+function createRamp(x, z, rotY = 0, color = 0x222244) {
+  const geometry = new THREE.BoxGeometry(rampDepth, rampHeight, fieldDepth - 2 * rampDepth);
+  geometry.translate(rampDepth / 2, rampHeight / 2, 0);
+  const material = new THREE.MeshStandardMaterial({ color });
+  const ramp = new THREE.Mesh(geometry, material);
+  ramp.position.set(x, rampHeight / 2, z);
+  ramp.rotation.z = -Math.atan(rampHeight / rampDepth);
+  ramp.rotation.y = rotY;
+  ramp.castShadow = true;
+  ramp.receiveShadow = true;
+  scene.add(ramp);
+  return ramp;
+}
+createRamp(-(fieldWidth/2) + rampDepth/2, 0, 0); // Left ramp
+createRamp((fieldWidth/2) - rampDepth/2, 0, Math.PI, 0x222244); // Right ramp (flip)
+function createRampZ(x, z, rotY = 0, color = 0x222244) {
+  // For near/far ramps
+  const geometry = new THREE.BoxGeometry(fieldWidth - 2 * rampDepth, rampHeight, rampDepth);
+  geometry.translate(0, rampHeight / 2, rampDepth / 2);
+  const material = new THREE.MeshStandardMaterial({ color });
+  const ramp = new THREE.Mesh(geometry, material);
+  ramp.position.set(x, rampHeight / 2, z);
+  ramp.rotation.x = Math.atan(rampHeight / rampDepth);
+  ramp.rotation.y = rotY;
+  ramp.castShadow = true;
+  ramp.receiveShadow = true;
+  scene.add(ramp);
+  return ramp;
+}
+createRampZ(0, -(fieldDepth/2) + rampDepth/2, 0); // Near ramp
+createRampZ(0, (fieldDepth/2) - rampDepth/2, Math.PI, 0x222244); // Far ramp (flip)
+
+// --- ROOF ---
+const roofGeometry = new THREE.PlaneGeometry(fieldWidth, fieldDepth);
+const roofMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
+const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+roof.position.set(0, wallHeight + 0.1, 0);
+roof.rotation.x = Math.PI / 2;
+roof.receiveShadow = true;
+scene.add(roof);
+
 // Add field lines and goals (visual only)
 function createGoal(x, color) {
   const postGeometry = new THREE.BoxGeometry(0.5, 4, 8);
@@ -190,61 +258,75 @@ function moveCar() {
 }
 
 // --- JUMP, DOUBLE JUMP, AND FLIP ---
+const fullFlipAngle = Math.PI * 2;
+const flipDuration = 16;
+let jumpKeyWasDown = false;
+
 function handleJumpOrFlip() {
-  // Initial jump (from ground)
-  if (keys[' '] && !isJumping && !isFlipping) {
-    isJumping = true;
-    verticalVelocity = jumpStrength;
-    hasDoubleJumped = false;
-    canDoubleJump = true;
-  }
+  // SPACEBAR handling: jump, double jump, flip (only spacebar needed)
+  const jumpKey = keys[' '];
 
-  // While airborne, check for flip or double jump
-  if (
-    isJumping && !isFlipping && canDoubleJump && keys[' ']
-  ) {
-    // FLIP: If a movement key is held
-    if ((keys['ArrowUp'] || keys['w']) || (keys['ArrowDown'] || keys['s']) || (keys['ArrowLeft'] || keys['a']) || (keys['ArrowRight'] || keys['d'])) {
-      if (keys['ArrowUp'] || keys['w']) flipDirection = 'forward';
-      else if (keys['ArrowDown'] || keys['s']) flipDirection = 'backward';
-      else if (keys['ArrowLeft'] || keys['a']) flipDirection = 'left';
-      else if (keys['ArrowRight'] || keys['d']) flipDirection = 'right';
-      isFlipping = true;
-      flipProgress = 0;
-
-      // Directional boost
-      let boostVec = { x: 0, z: 0 };
-      const angle = car.rotation.y;
-      switch (flipDirection) {
-        case 'forward':
-          boostVec.x = -Math.sin(angle) * flipBoost;
-          boostVec.z = -Math.cos(angle) * flipBoost;
-          break;
-        case 'backward':
-          boostVec.x = Math.sin(angle) * flipBoost;
-          boostVec.z = Math.cos(angle) * flipBoost;
-          break;
-        case 'left':
-          boostVec.x = -Math.cos(angle) * flipBoost;
-          boostVec.z = Math.sin(angle) * flipBoost;
-          break;
-        case 'right':
-          boostVec.x = Math.cos(angle) * flipBoost;
-          boostVec.z = -Math.sin(angle) * flipBoost;
-          break;
-      }
-      horizontalVelocity.x = boostVec.x;
-      horizontalVelocity.z = boostVec.z;
-      canDoubleJump = false;
+  // Detect "just pressed" event for spacebar
+  if (jumpKey && !jumpKeyWasDown) {
+    // Initial jump (from ground)
+    if (!isJumping && !isFlipping) {
+      isJumping = true;
+      verticalVelocity = jumpStrength;
       hasDoubleJumped = false;
-    } else if (!hasDoubleJumped) {
-      verticalVelocity = doubleJumpStrength;
-      hasDoubleJumped = true;
-      canDoubleJump = false;
+      canDoubleJump = true;
+    }
+    // While airborne, check for flip or double jump
+    else if (isJumping && !isFlipping && canDoubleJump) {
+      // FLIP: If a movement key is held
+      if (
+        (keys['ArrowUp'] || keys['w']) ||
+        (keys['ArrowDown'] || keys['s']) ||
+        (keys['ArrowLeft'] || keys['a']) ||
+        (keys['ArrowRight'] || keys['d'])
+      ) {
+        if (keys['ArrowUp'] || keys['w']) flipDirection = 'forward';
+        else if (keys['ArrowDown'] || keys['s']) flipDirection = 'backward';
+        else if (keys['ArrowLeft'] || keys['a']) flipDirection = 'left';
+        else if (keys['ArrowRight'] || keys['d']) flipDirection = 'right';
+        isFlipping = true;
+        flipProgress = 0;
+
+        // Directional boost
+        let boostVec = { x: 0, z: 0 };
+        const angle = car.rotation.y;
+        switch (flipDirection) {
+          case 'forward':
+            boostVec.x = -Math.sin(angle) * flipBoost;
+            boostVec.z = -Math.cos(angle) * flipBoost;
+            break;
+          case 'backward':
+            boostVec.x = Math.sin(angle) * flipBoost;
+            boostVec.z = Math.cos(angle) * flipBoost;
+            break;
+          case 'left':
+            boostVec.x = -Math.cos(angle) * flipBoost;
+            boostVec.z = Math.sin(angle) * flipBoost;
+            break;
+          case 'right':
+            boostVec.x = Math.cos(angle) * flipBoost;
+            boostVec.z = -Math.sin(angle) * flipBoost;
+            break;
+        }
+        horizontalVelocity.x = boostVec.x;
+        horizontalVelocity.z = boostVec.z;
+        canDoubleJump = false;
+        hasDoubleJumped = false;
+      } else if (!hasDoubleJumped) {
+        verticalVelocity = doubleJumpStrength;
+        hasDoubleJumped = true;
+        canDoubleJump = false;
+      }
     }
   }
 
-  // Animate flip
+  jumpKeyWasDown = jumpKey;
+
+  // Animate flip if flipping
   if (isFlipping) {
     const flipStep = fullFlipAngle / flipDuration;
     switch (flipDirection) {
@@ -315,6 +397,11 @@ function updateBall() {
     ball.position.z = Math.sign(ball.position.z) * (20 - ballRadius);
     ballVelocity.z *= -ballRestitution;
   }
+  // Roof collision
+  if (ball.position.y + ballRadius > wallHeight) {
+    ball.position.y = wallHeight - ballRadius;
+    ballVelocity.y *= -ballRestitution * 0.85; // Slightly less bounce
+  }
 
   // --- CAR TO BALL COLLISION ---
   const dist = Math.sqrt(
@@ -348,478 +435,7 @@ function updateCamera() {
   camera.lookAt(car.position.clone().add(new THREE.Vector3(0, 1, 0)));
 }
 
-// --- GAME LOOP ---
-function animate() {
-  requestAnimationFrame(animate);
-  moveCar();
-  handleJumpOrFlip();
-  updateBoostPads();
-  updateBall();
-  updateCamera();
-  boostDisplay.innerText = `Boost: ${Math.floor(boost)}`;
-  renderer.render(scene, camera);
-}
-
-animate();
-// ... (all code above remains unchanged)
-
-// Play button functionality: start the game loop when clicked, only once
-let gameStarted = false;
-
-playButton.addEventListener('click', () => {
-  if (!gameStarted) {
-    menu.style.display = 'none'; // Hide menu
-    animate(); // Start the game loop
-    gameStarted = true; // Prevent multiple loops
-  }
-});
-
-// ... (rest of your code remains unchanged)
-// ... (all your Rocket League game code above remains unchanged)
-
-// ... (all your Rocket League game code above remains unchanged)
-
-// --- MULTIPLAYER MENU UI (updated) ---
-const multiplayerMenu = document.createElement('div');
-multiplayerMenu.style.position = 'fixed';
-multiplayerMenu.style.top = '50%';
-multiplayerMenu.style.left = '50%';
-multiplayerMenu.style.transform = 'translate(-50%, -50%)';
-multiplayerMenu.style.background = 'rgba(20, 20, 20, 0.95)';
-multiplayerMenu.style.padding = '32px';
-multiplayerMenu.style.display = 'none';
-multiplayerMenu.style.flexDirection = 'column';
-multiplayerMenu.style.alignItems = 'center';
-multiplayerMenu.style.borderRadius = '10px';
-multiplayerMenu.style.boxShadow = '0 8px 32px rgba(0,0,0,0.25)';
-multiplayerMenu.innerHTML = `
-  <h2 style="color:white; margin-bottom:24px;">Multiplayer</h2>
-  <button id="createMatchBtn" style="margin: 8px 0; font-size: 18px; padding: 10px 30px;">Create</button>
-  <button id="joinMatchBtn" style="margin: 8px 0; font-size: 18px; padding: 10px 30px;">Join</button>
-  <div id="multiplayerCreate" style="display:none; margin-top:20px;">
-    <div style="color:white; margin-bottom:12px;">Choose Match Type:</div>
-    <label style="color:white; font-size:18px;">
-      <input type="radio" id="publicMatch" name="matchType" value="public" checked>
-      Public
-    </label>
-    <label style="color:white; font-size:18px; margin-left:24px;">
-      <input type="radio" id="privateMatch" name="matchType" value="private">
-      Private
-    </label>
-    <div id="privateCodeSection" style="display:none; margin-top:16px;">
-      <div style="color:white; margin-bottom:12px;">Your Match Code:</div>
-      <input id="matchCodeDisplay" readonly style="font-size:22px; text-align:center; width:120px;"/>
-      <div style="color: #aaa; margin-top:8px;">Share this code for others to join.</div>
-    </div>
-    <button id="startMatchBtn" style="margin-top:18px;">Start Match</button>
-    <button id="backFromCreateBtn" style="margin-top:18px;">Back</button>
-  </div>
-  <div id="multiplayerJoin" style="display:none; margin-top:20px;">
-    <div style="color:white; margin-bottom:12px;">Enter Match Code:</div>
-    <input id="matchCodeInput" style="font-size:22px; width:120px; text-align:center;" maxlength="8" />
-    <button id="joinCodeBtn" style="margin-left: 12px;">Join</button>
-    <div id="joinError" style="color:red; margin-top:8px; min-height:22px;"></div>
-    <button id="backFromJoinBtn" style="margin-top:18px;">Back</button>
-  </div>
-`;
-document.body.appendChild(multiplayerMenu);
-
-// --- Multiplayer Button Event ---
-multiplayerButton.addEventListener('click', () => {
-  menu.style.display = 'none';
-  multiplayerMenu.style.display = 'flex';
-  document.getElementById('multiplayerCreate').style.display = 'none';
-  document.getElementById('multiplayerJoin').style.display = 'none';
-});
-
-// --- CREATE MATCH ---
-function generateMatchCode(length = 6) {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < length; ++i) code += chars[Math.floor(Math.random() * chars.length)];
-  return code;
-}
-let currentMatchCode = null;
-let currentMatchType = "public"; // "public" or "private"
-
-// Show create match UI and handle match type selection
-document.getElementById('createMatchBtn').onclick = () => {
-  document.getElementById('multiplayerCreate').style.display = 'block';
-  document.getElementById('multiplayerJoin').style.display = 'none';
-  document.getElementById('privateCodeSection').style.display = 'none';
-  document.getElementById('publicMatch').checked = true;
-  document.getElementById('privateMatch').checked = false;
-  currentMatchType = "public";
-  currentMatchCode = null;
-  document.getElementById('matchCodeDisplay').value = "";
-};
-
-// Toggle between public and private, generate code if private
-document.getElementById('publicMatch').onchange = () => {
-  if (document.getElementById('publicMatch').checked) {
-    currentMatchType = "public";
-    document.getElementById('privateCodeSection').style.display = 'none';
-    currentMatchCode = null;
-    document.getElementById('matchCodeDisplay').value = "";
-  }
-};
-document.getElementById('privateMatch').onchange = () => {
-  if (document.getElementById('privateMatch').checked) {
-    currentMatchType = "private";
-    document.getElementById('privateCodeSection').style.display = 'block';
-    currentMatchCode = generateMatchCode();
-    document.getElementById('matchCodeDisplay').value = currentMatchCode;
-  }
-};
-
-document.getElementById('backFromCreateBtn').onclick = () => {
-  document.getElementById('multiplayerCreate').style.display = 'none';
-  document.getElementById('privateCodeSection').style.display = 'none';
-};
-
-// --- START MATCH BUTTON (Create match) ---
-document.getElementById('startMatchBtn').onclick = () => {
-  multiplayerMenu.style.display = 'none';
-  if (currentMatchType === "public") {
-    alert("Game started on a public server!\n(For demo purposes, this just starts the local game)");
-    animate();
-  } else {
-    alert("Private match created! Code: " + currentMatchCode + "\n(For demo, only people with this code can join)");
-    animate();
-  }
-};
-
-// --- JOIN MATCH ---
-document.getElementById('joinMatchBtn').onclick = () => {
-  document.getElementById('multiplayerJoin').style.display = 'block';
-  document.getElementById('multiplayerCreate').style.display = 'none';
-  document.getElementById('joinError').innerText = '';
-  document.getElementById('matchCodeInput').value = '';
-};
-
-document.getElementById('backFromJoinBtn').onclick = () => {
-  document.getElementById('multiplayerJoin').style.display = 'none';
-  document.getElementById('joinError').innerText = '';
-  document.getElementById('matchCodeInput').value = '';
-};
-
-// --- JOIN BUTTON LOGIC (FAKE MATCH FOR DEMO) ---
-document.getElementById('joinCodeBtn').onclick = () => {
-  const code = document.getElementById('matchCodeInput').value.trim().toUpperCase();
-  if (!code || code.length < 4) {
-    document.getElementById('joinError').innerText = 'Enter a valid code.';
-    return;
-  }
-  if (currentMatchCode && code === currentMatchCode && currentMatchType === "private") {
-    document.getElementById('joinError').innerText = '';
-    multiplayerMenu.style.display = 'none';
-    alert('Joined private match with code: ' + code + '\n(Multiplayer networking not implemented in this demo)');
-    animate();
-  } else {
-    document.getElementById('joinError').innerText = 'Match not found (demo: only works with the code you just created and private matches)';
-  }
-};
-
-// --- PUBLIC QUICK PLAY BUTTON ---
-let gameStarted = false;
-playButton.addEventListener('click', () => {
-  if (!gameStarted) {
-    menu.style.display = 'none';
-    // Teleport to public server if available, else start local game
-    alert("Joining a public server!\n(For demo purposes, this just starts the local game)");
-    animate();
-    gameStarted = true;
-  }
-});
-
-// --- Optionally: allow going back to main menu ---
-multiplayerMenu.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    multiplayerMenu.style.display = 'none';
-    menu.style.display = '';
-  }
-});
-
-// ... (rest of your code remains unchanged)
-// ... (all your Rocket League game code above remains unchanged)
-
-// --- JUMP, DOUBLE JUMP, AND FLIP (with only spacebar needed) ---
-let jumpKeyWasDown = false;
-
-function handleJumpOrFlip() {
-  // SPACEBAR handling: jump, double jump, flip (only spacebar needed)
-  const jumpKey = keys[' '];
-
-  // Detect "just pressed" event for spacebar
-  if (jumpKey && !jumpKeyWasDown) {
-    // Initial jump (from ground)
-    if (!isJumping && !isFlipping) {
-      isJumping = true;
-      verticalVelocity = jumpStrength;
-      hasDoubleJumped = false;
-      canDoubleJump = true;
-    }
-    // While airborne, check for flip or double jump
-    else if (isJumping && !isFlipping && canDoubleJump) {
-      // FLIP: If a movement key is held, determine flip direction and apply directional boost
-      if (
-        (keys['ArrowUp'] || keys['w']) ||
-        (keys['ArrowDown'] || keys['s']) ||
-        (keys['ArrowLeft'] || keys['a']) ||
-        (keys['ArrowRight'] || keys['d'])
-      ) {
-        if (keys['ArrowUp'] || keys['w']) flipDirection = 'forward';
-        else if (keys['ArrowDown'] || keys['s']) flipDirection = 'backward';
-        else if (keys['ArrowLeft'] || keys['a']) flipDirection = 'left';
-        else if (keys['ArrowRight'] || keys['d']) flipDirection = 'right';
-        isFlipping = true;
-        flipProgress = 0;
-
-        // Directional boost vector
-        let boostVec = { x: 0, z: 0 };
-        const angle = car.rotation.y;
-        switch (flipDirection) {
-          case 'forward':
-            boostVec.x = -Math.sin(angle) * flipBoost;
-            boostVec.z = -Math.cos(angle) * flipBoost;
-            break;
-          case 'backward':
-            boostVec.x = Math.sin(angle) * flipBoost;
-            boostVec.z = Math.cos(angle) * flipBoost;
-            break;
-          case 'left':
-            boostVec.x = -Math.cos(angle) * flipBoost;
-            boostVec.z = Math.sin(angle) * flipBoost;
-            break;
-          case 'right':
-            boostVec.x = Math.cos(angle) * flipBoost;
-            boostVec.z = -Math.sin(angle) * flipBoost;
-            break;
-        }
-        horizontalVelocity.x = boostVec.x;
-        horizontalVelocity.z = boostVec.z;
-        canDoubleJump = false;
-        hasDoubleJumped = false;
-      }
-      // DOUBLE JUMP: If NO movement key, DOUBLE JUMP
-      else if (!hasDoubleJumped) {
-        verticalVelocity = doubleJumpStrength;
-        hasDoubleJumped = true;
-        canDoubleJump = false;
-      }
-    }
-  }
-
-  jumpKeyWasDown = jumpKey;
-
-  // Animate flip if flipping
-  if (isFlipping) {
-    const flipStep = fullFlipAngle / flipDuration;
-    switch (flipDirection) {
-      case 'forward': car.rotation.x -= flipStep; break;
-      case 'backward': car.rotation.x += flipStep; break;
-      case 'left': car.rotation.z += flipStep; break;
-      case 'right': car.rotation.z -= flipStep; break;
-    }
-    flipProgress++;
-    if (flipProgress >= flipDuration) {
-      isFlipping = false;
-      if (flipDirection === 'forward' || flipDirection === 'backward')
-        car.rotation.x = Math.round(car.rotation.x / (Math.PI * 2)) * (Math.PI * 2);
-      else car.rotation.z = Math.round(car.rotation.z / (Math.PI * 2)) * (Math.PI * 2);
-      flipDirection = null;
-    }
-  }
-
-  // Jump physics and landing
-  if (isJumping) {
-    car.position.y += verticalVelocity;
-    verticalVelocity += gravity;
-    car.position.x += horizontalVelocity.x;
-    car.position.z += horizontalVelocity.z;
-
-    if (car.position.y <= 1.2) {
-      car.position.y = 1.2;
-      isJumping = false;
-      canDoubleJump = true;
-      isFlipping = false;
-      flipDirection = null;
-      flipProgress = 0;
-      hasDoubleJumped = false;
-      verticalVelocity = 0;
-      carSpeed = baseCarSpeed;
-      car.rotation.x = 0;
-      car.rotation.z = 0;
-      horizontalVelocity.x = 0;
-      horizontalVelocity.z = 0;
-    }
-  }
-}
-
-// ... (rest of your code remains unchanged)
-// ... (all your Rocket League game code above remains unchanged)
-// ... (all your Rocket League game code above remains unchanged)
-
-// --- JUMP, DOUBLE JUMP, AND FLIP (with only spacebar needed, and jump allowed in any direction) ---
-let jumpKeyWasDown = false;
-
-function handleJumpOrFlip() {
-  // SPACEBAR handling: jump, double jump, flip (only spacebar needed)
-  const jumpKey = keys[' '];
-
-  // Detect "just pressed" event for spacebar
-  if (jumpKey && !jumpKeyWasDown) {
-    // Initial jump (from ground) - allow jumping even if moving in any direction!
-    if (!isJumping && !isFlipping) {
-      isJumping = true;
-      verticalVelocity = jumpStrength;
-
-      // Keep horizontal momentum if moving while jumping
-      if (keys['ArrowUp'] || keys['w']) {
-        horizontalVelocity.x = -Math.sin(car.rotation.y) * carSpeed;
-        horizontalVelocity.z = -Math.cos(car.rotation.y) * carSpeed;
-      } else if (keys['ArrowDown'] || keys['s']) {
-        horizontalVelocity.x = Math.sin(car.rotation.y) * carSpeed;
-        horizontalVelocity.z = Math.cos(car.rotation.y) * carSpeed;
-      }
-      // Allow diagonal jump with left/right + up/down
-      if ((keys['ArrowLeft'] || keys['a']) && (keys['ArrowUp'] || keys['w'])) {
-        // Up + left
-        const angle = car.rotation.y + Math.PI / 4;
-        horizontalVelocity.x = -Math.sin(angle) * carSpeed;
-        horizontalVelocity.z = -Math.cos(angle) * carSpeed;
-      } else if ((keys['ArrowRight'] || keys['d']) && (keys['ArrowUp'] || keys['w'])) {
-        // Up + right
-        const angle = car.rotation.y - Math.PI / 4;
-        horizontalVelocity.x = -Math.sin(angle) * carSpeed;
-        horizontalVelocity.z = -Math.cos(angle) * carSpeed;
-      } else if ((keys['ArrowLeft'] || keys['a']) && (keys['ArrowDown'] || keys['s'])) {
-        // Down + left
-        const angle = car.rotation.y + (3 * Math.PI) / 4;
-        horizontalVelocity.x = -Math.sin(angle) * carSpeed;
-        horizontalVelocity.z = -Math.cos(angle) * carSpeed;
-      } else if ((keys['ArrowRight'] || keys['d']) && (keys['ArrowDown'] || keys['s'])) {
-        // Down + right
-        const angle = car.rotation.y - (3 * Math.PI) / 4;
-        horizontalVelocity.x = -Math.sin(angle) * carSpeed;
-        horizontalVelocity.z = -Math.cos(angle) * carSpeed;
-      } else if (keys['ArrowLeft'] || keys['a']) {
-        // Just left
-        const angle = car.rotation.y + Math.PI / 2;
-        horizontalVelocity.x = -Math.sin(angle) * carSpeed;
-        horizontalVelocity.z = -Math.cos(angle) * carSpeed;
-      } else if (keys['ArrowRight'] || keys['d']) {
-        // Just right
-        const angle = car.rotation.y - Math.PI / 2;
-        horizontalVelocity.x = -Math.sin(angle) * carSpeed;
-        horizontalVelocity.z = -Math.cos(angle) * carSpeed;
-      }
-
-      hasDoubleJumped = false;
-      canDoubleJump = true;
-    }
-    // While airborne, check for flip or double jump
-    else if (isJumping && !isFlipping && canDoubleJump) {
-      // FLIP: If a movement key is held, determine flip direction and apply directional boost
-      if (
-        (keys['ArrowUp'] || keys['w']) ||
-        (keys['ArrowDown'] || keys['s']) ||
-        (keys['ArrowLeft'] || keys['a']) ||
-        (keys['ArrowRight'] || keys['d'])
-      ) {
-        if (keys['ArrowUp'] || keys['w']) flipDirection = 'forward';
-        else if (keys['ArrowDown'] || keys['s']) flipDirection = 'backward';
-        else if (keys['ArrowLeft'] || keys['a']) flipDirection = 'left';
-        else if (keys['ArrowRight'] || keys['d']) flipDirection = 'right';
-        isFlipping = true;
-        flipProgress = 0;
-
-        // Directional boost vector
-        let boostVec = { x: 0, z: 0 };
-        const angle = car.rotation.y;
-        switch (flipDirection) {
-          case 'forward':
-            boostVec.x = -Math.sin(angle) * flipBoost;
-            boostVec.z = -Math.cos(angle) * flipBoost;
-            break;
-          case 'backward':
-            boostVec.x = Math.sin(angle) * flipBoost;
-            boostVec.z = Math.cos(angle) * flipBoost;
-            break;
-          case 'left':
-            boostVec.x = -Math.cos(angle) * flipBoost;
-            boostVec.z = Math.sin(angle) * flipBoost;
-            break;
-          case 'right':
-            boostVec.x = Math.cos(angle) * flipBoost;
-            boostVec.z = -Math.sin(angle) * flipBoost;
-            break;
-        }
-        horizontalVelocity.x = boostVec.x;
-        horizontalVelocity.z = boostVec.z;
-        canDoubleJump = false;
-        hasDoubleJumped = false;
-      }
-      // DOUBLE JUMP: If NO movement key, DOUBLE JUMP
-      else if (!hasDoubleJumped) {
-        verticalVelocity = doubleJumpStrength;
-        hasDoubleJumped = true;
-        canDoubleJump = false;
-      }
-    }
-  }
-
-  jumpKeyWasDown = jumpKey;
-
-  // Animate flip if flipping
-  if (isFlipping) {
-    const flipStep = fullFlipAngle / flipDuration;
-    switch (flipDirection) {
-      case 'forward': car.rotation.x -= flipStep; break;
-      case 'backward': car.rotation.x += flipStep; break;
-      case 'left': car.rotation.z += flipStep; break;
-      case 'right': car.rotation.z -= flipStep; break;
-    }
-    flipProgress++;
-    if (flipProgress >= flipDuration) {
-      isFlipping = false;
-      if (flipDirection === 'forward' || flipDirection === 'backward')
-        car.rotation.x = Math.round(car.rotation.x / (Math.PI * 2)) * (Math.PI * 2);
-      else car.rotation.z = Math.round(car.rotation.z / (Math.PI * 2)) * (Math.PI * 2);
-      flipDirection = null;
-    }
-  }
-
-  // Jump physics and landing
-  if (isJumping) {
-    car.position.y += verticalVelocity;
-    verticalVelocity += gravity;
-    car.position.x += horizontalVelocity.x;
-    car.position.z += horizontalVelocity.z;
-
-    if (car.position.y <= 1.2) {
-      car.position.y = 1.2;
-      isJumping = false;
-      canDoubleJump = true;
-      isFlipping = false;
-      flipDirection = null;
-      flipProgress = 0;
-      hasDoubleJumped = false;
-      verticalVelocity = 0;
-      carSpeed = baseCarSpeed;
-      car.rotation.x = 0;
-      car.rotation.z = 0;
-      horizontalVelocity.x = 0;
-      horizontalVelocity.z = 0;
-    }
-  }
-}
-
-// ... (rest of your code remains unchanged)
-// ... (existing code above remains unchanged)
-
 // --- SCORE LOGIC ---
-// Add score UI
 const scoreDisplay = document.createElement('div');
 scoreDisplay.style.position = 'fixed';
 scoreDisplay.style.top = '20px';
@@ -842,7 +458,6 @@ function updateScoreDisplay() {
   scoreDisplay.innerText = `Red: ${redScore}  |  Green: ${greenScore}`;
 }
 
-// Sound or visual for scoring (optional)
 function showGoalMessage(team) {
   const goalMsg = document.createElement('div');
   goalMsg.style.position = 'fixed';
@@ -861,9 +476,6 @@ function showGoalMessage(team) {
 }
 
 // --- GOAL DETECTION ---
-// Left goal: x < -29, z between -4 and 4, y below 3
-// Right goal: x > 29, z between -4 and 4, y below 3
-
 function checkGoal() {
   // Left Goal (Red goal): Green scores
   if (
@@ -891,7 +503,6 @@ function checkGoal() {
 
 // --- GOAL RESET ---
 function resetAfterGoal() {
-  // Reset positions
   ball.position.set(0, ballRadius, 0);
   car.position.set(0, 1.2, -10);
   car.rotation.set(0, 0, 0);
@@ -909,17 +520,16 @@ function resetAfterGoal() {
   boost = maxBoost;
 }
 
-// --- GAME LOOP (update to call checkGoal) ---
+// --- GAME LOOP ---
 function animate() {
   requestAnimationFrame(animate);
   moveCar();
   handleJumpOrFlip();
   updateBoostPads();
   updateBall();
-  checkGoal(); // <-- Add this line
+  checkGoal();
   updateCamera();
   boostDisplay.innerText = `Boost: ${Math.floor(boost)}`;
   renderer.render(scene, camera);
 }
-
-// ... (rest of your code remains unchanged)
+animate();
