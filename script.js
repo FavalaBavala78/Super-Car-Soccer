@@ -126,12 +126,12 @@ function handleJumpOrFlip() {
     if (keys['ArrowUp'] || keys['w']) {
       // Perform a forward flip
       car.rotation.x -= Math.PI / 2; // Rotate forward
-      carSpeed += flipSpeedBoost; // Increase speed
+      carSpeed += flipSpeedBoost * 3; // Triple the speed boost when flipping (FASTER!)
       hasFlipped = true;
     } else if (keys['ArrowDown'] || keys['s']) {
       // Perform a backward flip
       car.rotation.x += Math.PI / 2; // Rotate backward
-      carSpeed += flipSpeedBoost; // Increase speed
+      carSpeed += flipSpeedBoost * 3; // Triple the speed boost when flipping (FASTER!)
       hasFlipped = true;
     }
 
