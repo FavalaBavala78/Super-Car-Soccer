@@ -377,7 +377,9 @@ playButton.addEventListener('click', () => {
 // ... (rest of your code remains unchanged)
 // ... (all your Rocket League game code above remains unchanged)
 
-// --- MULTIPLAYER MENU UI ---
+// ... (all your Rocket League game code above remains unchanged)
+
+// --- MULTIPLAYER MENU UI (updated) ---
 const multiplayerMenu = document.createElement('div');
 multiplayerMenu.style.position = 'fixed';
 multiplayerMenu.style.top = '50%';
@@ -395,9 +397,21 @@ multiplayerMenu.innerHTML = `
   <button id="createMatchBtn" style="margin: 8px 0; font-size: 18px; padding: 10px 30px;">Create</button>
   <button id="joinMatchBtn" style="margin: 8px 0; font-size: 18px; padding: 10px 30px;">Join</button>
   <div id="multiplayerCreate" style="display:none; margin-top:20px;">
-    <div style="color:white; margin-bottom:12px;">Your Match Code:</div>
-    <input id="matchCodeDisplay" readonly style="font-size:22px; text-align:center; width:120px;"/>
-    <div style="color: #aaa; margin-top:8px;">Share this code for others to join.</div>
+    <div style="color:white; margin-bottom:12px;">Choose Match Type:</div>
+    <label style="color:white; font-size:18px;">
+      <input type="radio" id="publicMatch" name="matchType" value="public" checked>
+      Public
+    </label>
+    <label style="color:white; font-size:18px; margin-left:24px;">
+      <input type="radio" id="privateMatch" name="matchType" value="private">
+      Private
+    </label>
+    <div id="privateCodeSection" style="display:none; margin-top:16px;">
+      <div style="color:white; margin-bottom:12px;">Your Match Code:</div>
+      <input id="matchCodeDisplay" readonly style="font-size:22px; text-align:center; width:120px;"/>
+      <div style="color: #aaa; margin-top:8px;">Share this code for others to join.</div>
+    </div>
+    <button id="startMatchBtn" style="margin-top:18px;">Start Match</button>
     <button id="backFromCreateBtn" style="margin-top:18px;">Back</button>
   </div>
   <div id="multiplayerJoin" style="display:none; margin-top:20px;">
@@ -414,7 +428,6 @@ document.body.appendChild(multiplayerMenu);
 multiplayerButton.addEventListener('click', () => {
   menu.style.display = 'none';
   multiplayerMenu.style.display = 'flex';
-  // Hide create/join panes on open
   document.getElementById('multiplayerCreate').style.display = 'none';
   document.getElementById('multiplayerJoin').style.display = 'none';
 });
@@ -427,17 +440,53 @@ function generateMatchCode(length = 6) {
   return code;
 }
 let currentMatchCode = null;
+let currentMatchType = "public"; // "public" or "private"
 
+// Show create match UI and handle match type selection
 document.getElementById('createMatchBtn').onclick = () => {
-  // Generate a code and display it
-  currentMatchCode = generateMatchCode();
-  document.getElementById('matchCodeDisplay').value = currentMatchCode;
   document.getElementById('multiplayerCreate').style.display = 'block';
   document.getElementById('multiplayerJoin').style.display = 'none';
+  document.getElementById('privateCodeSection').style.display = 'none';
+  document.getElementById('publicMatch').checked = true;
+  document.getElementById('privateMatch').checked = false;
+  currentMatchType = "public";
+  currentMatchCode = null;
+  document.getElementById('matchCodeDisplay').value = "";
+};
+
+// Toggle between public and private, generate code if private
+document.getElementById('publicMatch').onchange = () => {
+  if (document.getElementById('publicMatch').checked) {
+    currentMatchType = "public";
+    document.getElementById('privateCodeSection').style.display = 'none';
+    currentMatchCode = null;
+    document.getElementById('matchCodeDisplay').value = "";
+  }
+};
+document.getElementById('privateMatch').onchange = () => {
+  if (document.getElementById('privateMatch').checked) {
+    currentMatchType = "private";
+    document.getElementById('privateCodeSection').style.display = 'block';
+    currentMatchCode = generateMatchCode();
+    document.getElementById('matchCodeDisplay').value = currentMatchCode;
+  }
 };
 
 document.getElementById('backFromCreateBtn').onclick = () => {
   document.getElementById('multiplayerCreate').style.display = 'none';
+  document.getElementById('privateCodeSection').style.display = 'none';
+};
+
+// --- START MATCH BUTTON (Create match) ---
+document.getElementById('startMatchBtn').onclick = () => {
+  multiplayerMenu.style.display = 'none';
+  if (currentMatchType === "public") {
+    alert("Game started on a public server!\n(For demo purposes, this just starts the local game)");
+    animate();
+  } else {
+    alert("Private match created! Code: " + currentMatchCode + "\n(For demo, only people with this code can join)");
+    animate();
+  }
 };
 
 // --- JOIN MATCH ---
@@ -457,21 +506,31 @@ document.getElementById('backFromJoinBtn').onclick = () => {
 // --- JOIN BUTTON LOGIC (FAKE MATCH FOR DEMO) ---
 document.getElementById('joinCodeBtn').onclick = () => {
   const code = document.getElementById('matchCodeInput').value.trim().toUpperCase();
-  // For real multiplayer, you would check with a server here
   if (!code || code.length < 4) {
     document.getElementById('joinError').innerText = 'Enter a valid code.';
     return;
   }
-  if (currentMatchCode && code === currentMatchCode) {
-    // Success! (For actual multiplayer, handle connection etc.)
+  if (currentMatchCode && code === currentMatchCode && currentMatchType === "private") {
     document.getElementById('joinError').innerText = '';
     multiplayerMenu.style.display = 'none';
-    alert('Joined match with code: ' + code + '\n(Multiplayer networking not implemented in this demo)');
-    // Start game/scene for multiplayer here.
+    alert('Joined private match with code: ' + code + '\n(Multiplayer networking not implemented in this demo)');
+    animate();
   } else {
-    document.getElementById('joinError').innerText = 'Match not found (demo: only works with code you just created)';
+    document.getElementById('joinError').innerText = 'Match not found (demo: only works with the code you just created and private matches)';
   }
 };
+
+// --- PUBLIC QUICK PLAY BUTTON ---
+let gameStarted = false;
+playButton.addEventListener('click', () => {
+  if (!gameStarted) {
+    menu.style.display = 'none';
+    // Teleport to public server if available, else start local game
+    alert("Joining a public server!\n(For demo purposes, this just starts the local game)");
+    animate();
+    gameStarted = true;
+  }
+});
 
 // --- Optionally: allow going back to main menu ---
 multiplayerMenu.addEventListener('keydown', (e) => {
